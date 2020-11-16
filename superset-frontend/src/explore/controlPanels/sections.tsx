@@ -101,7 +101,6 @@ export const annotations: ControlPanelSectionConfig = {
           default: [],
           description: 'Annotation layers',
           renderTrigger: true,
-          tabOverride: 'data',
         },
       },
     ],
