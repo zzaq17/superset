@@ -50,7 +50,6 @@ export const sliceEntitiesForChart = {
       datasource: datasourceId,
       description: null,
       description_markeddown: '',
-      modified: '23 hours ago',
       changed_on: 1529453332615,
     },
   },
@@ -83,7 +82,6 @@ export const sliceEntitiesForDashboard = {
       datasource: '2__table',
       description: null,
       description_markeddown: '',
-      modified: '23 hours ago',
       changed_on: 1529453332615,
     },
     128: {
@@ -96,7 +94,6 @@ export const sliceEntitiesForDashboard = {
       datasource: '2__table',
       description: null,
       description_markeddown: '',
-      modified: '23 hours ago',
       changed_on: 1529453332628,
     },
     129: {
@@ -109,7 +106,6 @@ export const sliceEntitiesForDashboard = {
       datasource: '2__table',
       description: null,
       description_markeddown: '',
-      modified: '23 hours ago',
       changed_on: 1529453332637,
     },
     130: {
@@ -122,7 +118,6 @@ export const sliceEntitiesForDashboard = {
       datasource: '2__table',
       description: null,
       description_markeddown: '',
-      modified: '23 hours ago',
       changed_on: 1529453332645,
     },
     131: {
@@ -135,7 +130,6 @@ export const sliceEntitiesForDashboard = {
       datasource: '2__table',
       description: null,
       description_markeddown: '',
-      modified: '23 hours ago',
       changed_on: 1529453332654,
     },
     132: {
@@ -148,7 +142,6 @@ export const sliceEntitiesForDashboard = {
       datasource: '2__table',
       description: null,
       description_markeddown: '',
-      modified: '23 hours ago',
       changed_on: 1529453332663,
     },
     133: {
@@ -161,7 +154,6 @@ export const sliceEntitiesForDashboard = {
       datasource: '2__table',
       description: null,
       description_markeddown: '',
-      modified: '23 hours ago',
       changed_on: 1529453332673,
     },
     134: {
@@ -174,7 +166,6 @@ export const sliceEntitiesForDashboard = {
       datasource: '2__table',
       description: null,
       description_markeddown: '',
-      modified: '23 hours ago',
       changed_on: 1529453332680,
     },
     135: {
@@ -187,7 +178,6 @@ export const sliceEntitiesForDashboard = {
       datasource: '2__table',
       description: null,
       description_markeddown: '',
-      modified: '23 hours ago',
       changed_on: 1529453332688,
     },
     136: {
@@ -200,7 +190,6 @@ export const sliceEntitiesForDashboard = {
       datasource: '2__table',
       description: null,
       description_markeddown: '',
-      modified: '23 hours ago',
       changed_on: 1529453332700,
     },
   },

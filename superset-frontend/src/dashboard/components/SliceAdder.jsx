@@ -191,7 +191,7 @@ class SliceAdder extends React.Component {
             innerRef={dragSourceRef}
             style={style}
             sliceName={cellData.slice_name}
-            lastModified={cellData.changed_on_humanized}
+            lastModified={cellData.changed_on}
             visType={cellData.viz_type}
             datasourceUrl={cellData.datasource_url}
             datasourceName={cellData.datasource_name}

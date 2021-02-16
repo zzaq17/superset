@@ -19,6 +19,7 @@
 import cx from 'classnames';
 import React from 'react';
 import PropTypes from 'prop-types';
+import moment from 'moment';
 import { t } from '@superset-ui/core';
 
 const propTypes = {
@@ -63,7 +64,7 @@ function AddSliceCard({
         <div className="card-body">
           <div className="item">
             <span>{t('Modified')} </span>
-            <span>{lastModified}</span>
+            <span>{moment(lastModified).fromNow()}</span>
           </div>
           <div className="item">
             <span>{t('Visualization')} </span>
