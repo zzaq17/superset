@@ -90,7 +90,12 @@ class AbstractEventLogger(ABC):
 
         start_time = time.time()
         referrer = request.referrer[:1000] if request.referrer else None
-        user_id = g.user.get_id() if hasattr(g, "user") and g.user else None
+        try:
+            user_id = g.user.get_id()
+        except Exception as ex:  # pylint: disable=broad-except
+            logging.warning(ex)
+            user_id = None
+        
         payload_override = {}
 
         # yield a helper to add additional payload
@@ -136,11 +141,7 @@ class AbstractEventLogger(ABC):
             records=records,
             dashboard_id=dashboard_id,
             slice_id=slice_id,
-<<<<<<< HEAD
-            duration_ms=duration_ms,
-=======
             duration_ms=round((time.time() - start_time) * 1000),
->>>>>>> parent of b17e7aa5c... feat: refactor on DBEventLogger to allow for context management (#13441)
             referrer=referrer,
         )
 
