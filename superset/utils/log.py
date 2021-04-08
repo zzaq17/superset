@@ -178,7 +178,7 @@ class AbstractEventLogger(ABC):
         payload.update(payload_override)
 
         action_str = payload_override.pop("action", action)
-        self.log_with_context(
+        self.log_context(
             action_str, duration, object_ref, log_to_statsd, **payload_override
         )
 
