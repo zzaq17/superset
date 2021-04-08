@@ -145,6 +145,44 @@ class AbstractEventLogger(ABC):
             referrer=referrer,
         )
 
+    def log_with_context(  # pylint: disable=too-many-locals
+        self, action: str, object_ref: Optional[str] = None, log_to_statsd: bool = True,
+    ) -> Iterator[Callable[..., None]]:
+        """
+        Log an event with additional information from the request context.
+
+        :param action: a name to identify the event
+        :param object_ref: reference to the Python object that triggered this action
+        :param log_to_statsd: whether to update statsd counter for the action
+        """
+        from superset.views.core import get_form_data
+
+        start_time = time.time()
+        referrer = request.referrer[:1000] if request.referrer else None
+        try:
+            user_id = g.user.get_id()
+        except Exception as ex:  # pylint: disable=broad-except
+            logging.warning(ex)
+            user_id = None
+        
+        if payload_override:    
+            payload.update(payload_override)
+
+        # yield a helper to add additional payload
+        yield lambda **kwargs: payload_override.update(kwargs)
+
+        payload = collect_request_payload()
+        if object_ref:
+            payload["object_ref"] = object_ref
+        # manual updates from context comes the last
+        payload.update(payload_override)
+
+        action_str = payload_override.pop("action", action)
+        self.log_with_context(
+            action_str, duration, object_ref, log_to_statsd, **payload_override
+        )
+
+
     def _wrapper(
         self,
         f: Callable[..., Any],
