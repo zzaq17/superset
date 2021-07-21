@@ -523,7 +523,7 @@ class ChartRestApi(BaseSupersetModelRestApi):
         action=lambda self, *args, **kwargs: f"{self.__class__.__name__}.data",
         log_to_statsd=False,
     )
-    def data(self) -> Response:
+    def post_data(self) -> Response:
         """
         Takes a query context constructed in the client and returns payload
         data response for the given query.
@@ -573,6 +573,102 @@ class ChartRestApi(BaseSupersetModelRestApi):
 
         if json_body is None:
             return self.response_400(message=_("Request is not JSON"))
+
+        try:
+            command = ChartDataCommand()
+            query_context = command.set_query_context(json_body)
+            command.validate()
+        except QueryObjectValidationError as error:
+            return self.response_400(message=error.message)
+        except ValidationError as error:
+            return self.response_400(
+                message=_(
+                    "Request is incorrect: %(error)s", error=error.normalized_messages()
+                )
+            )
+
+        # TODO: support CSV, SQL query and other non-JSON types
+        if (
+            is_feature_enabled("GLOBAL_ASYNC_QUERIES")
+            and query_context.result_format == ChartDataResultFormat.JSON
+            and query_context.result_type == ChartDataResultType.FULL
+        ):
+            # First, look for the chart query results in the cache.
+            try:
+                result = command.run(force_cached=True)
+            except ChartDataCacheLoadError:
+                result = None  # type: ignore
+
+            already_cached_result = result is not None
+
+            # If the chart query has already been cached, return it immediately.
+            if already_cached_result:
+                return self.send_chart_response(result)
+
+            # Otherwise, kick off a background job to run the chart query.
+            # Clients will either poll or be notified of query completion,
+            # at which point they will call the /data/<cache_key> endpoint
+            # to retrieve the results.
+            try:
+                command.validate_async_request(request)
+            except AsyncQueryTokenException:
+                return self.response_401()
+
+            result = command.run_async(g.user.get_id())
+            return self.response(202, **result)
+
+        return self.get_data_response(command)
+
+    @expose("/<int:pk>/data", methods=["GET"])
+    @protect()
+    @statsd_metrics
+    @event_logger.log_this_with_context(
+        action=lambda self, *args, **kwargs: f"{self.__class__.__name__}.data",
+        log_to_statsd=False,
+    )
+    def get_data(self, pk: int) -> Response:
+        """
+        Takes a chart ID and uses the query context stored when the chart was saved
+        to return payload data response.
+        ---
+        get:
+          description: >-
+            Takes a chart ID and uses the query context stored when the chart was saved
+            to return payload data response.
+          responses:
+            200:
+              description: Query result
+              content:
+                application/json:
+                  schema:
+                    $ref: "#/components/schemas/ChartDataResponseSchema"
+            202:
+              description: Async job details
+              content:
+                application/json:
+                  schema:
+                    $ref: "#/components/schemas/ChartDataAsyncResponseSchema"
+            400:
+              $ref: '#/components/responses/400'
+            401:
+              $ref: '#/components/responses/401'
+            500:
+              $ref: '#/components/responses/500'
+        """
+        json_body = None
+
+        # load query context from the chart
+        chart = self.datamodel.get(pk, self._base_filters)
+        if not chart:
+            return self.response_404()
+
+        json_body = chart.query_context
+        if json_body is None:
+            return self.response_404(
+                message=_(
+                    "Chart has no query context saved. Please save the chart again."
+                )
+            )
 
         try:
             command = ChartDataCommand()
