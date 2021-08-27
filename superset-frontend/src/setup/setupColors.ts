@@ -32,15 +32,25 @@ import {
 } from '@superset-ui/core';
 import superset from '@superset-ui/core/lib/color/colorSchemes/categorical/superset';
 
+function findDefaultKey(
+  colorSchemes: (CategoricalScheme | SequentialScheme)[],
+  fallback: string,
+) {
+  return colorSchemes.reduce(
+    (defaultKey, scheme) => (scheme.isDefault ? scheme.id : defaultKey),
+    fallback,
+  );
+}
+
 export default function setupColors(
-  extraCategoricalColorSchemas: CategoricalScheme[] = [],
+  extraCategoricalColorSchemes: CategoricalScheme[] = [],
   extraSequentialColorSchemes: SequentialScheme[] = [],
 ) {
   // Register color schemes
   const categoricalSchemeRegistry = getCategoricalSchemeRegistry();
 
-  if (extraCategoricalColorSchemas?.length > 0) {
-    extraCategoricalColorSchemas.forEach(scheme => {
+  if (extraCategoricalColorSchemes?.length > 0) {
+    extraCategoricalColorSchemes.forEach(scheme => {
       categoricalSchemeRegistry.registerValue(scheme.id, scheme);
     });
   }
@@ -52,7 +62,10 @@ export default function setupColors(
       });
     },
   );
-  categoricalSchemeRegistry.setDefaultKey('supersetColors');
+
+  categoricalSchemeRegistry.setDefaultKey(
+    findDefaultKey(extraCategoricalColorSchemes, 'supersetColors'),
+  );
 
   const sequentialSchemeRegistry = getSequentialSchemeRegistry();
 
@@ -70,5 +83,8 @@ export default function setupColors(
       sequentialSchemeRegistry.registerValue(scheme.id, scheme);
     });
   });
-  sequentialSchemeRegistry.setDefaultKey('superset_seq_1');
+
+  sequentialSchemeRegistry.setDefaultKey(
+    findDefaultKey(extraSequentialColorSchemes, 'superset_seq_1'),
+  );
 }
