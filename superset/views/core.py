@@ -43,7 +43,7 @@ from sqlalchemy import and_, or_
 from sqlalchemy.engine.url import make_url
 from sqlalchemy.exc import ArgumentError, DBAPIError, NoSuchModuleError, SQLAlchemyError
 from sqlalchemy.orm.session import Session
-from sqlalchemy.sql import functions as func
+from sqlalchemy.sql import functions as func, text
 from werkzeug.urls import Href
 
 from superset import (
@@ -195,6 +195,70 @@ class Superset(BaseSupersetView):  # pylint: disable=too-many-public-methods
                 key=lambda datasource: datasource["name"],
             )
         )
+
+    @event_logger.log_this
+    @expose("/global-search/", methods=["GET"])
+    def global_search(self) -> FlaskResponse:
+        """ Returns search results """
+        query_text = request.args.get("q", "")
+        query_sql = """
+with vars_cte (query, normalization) as (
+    select
+           -- here, the query string entered by the user is processed into a query structure
+           -- with normalized words and operators, and without punctuation and stopwords
+           plainto_tsquery(%(query_text)s),
+           -- 32 is a bit flag that will normalize ranks to 0 <= rank <= 1
+           -- this is needed so that we can collate results between
+           -- multiple superset instances.
+           -- Other bit flags can be used here to change how ranks are determined.
+           32
+)
+-- see https://www.postgresql.org/docs/10/textsearch-controls.html and related docs
+select
+    'dashboard' as type,
+    id,
+    dashboard_title as title,
+    description,
+    -- combine the title vector and the description vector
+    ts_rank_cd(vec_title || vec_desc, query, normalization) as rank,
+    -- headline is the string, but with markup highlighting the locations of matches
+    ts_headline(dashboard_title, query) as title_headline,
+    ts_headline(description, query) as description_headline
+from
+    dashboards,
+    vars_cte,
+    -- creates a tsvector of all the positions of words contained in a column.
+    -- used for evaluating rankings and matches.
+    to_tsvector(coalesce(dashboard_title, '')) as vec_title,
+    to_tsvector(coalesce(description, '')) as vec_desc
+where
+    -- @@ determines if a query matches a tsvector
+    query @@ (vec_title || vec_desc)
+
+union all
+
+select
+    -- column names here are inherited from the first query of the union
+    'slice',
+    id,
+    slice_name,
+    description,
+    ts_rank_cd(vec_title || vec_desc, query, normalization),
+    ts_headline(slice_name, query),
+    ts_headline(description, query)
+from
+    slices,
+    vars_cte,
+    to_tsvector(coalesce(slice_name, '')) as vec_title,
+    to_tsvector(coalesce(description,  '')) as vec_desc
+where
+    query @@ (vec_title || vec_desc)
+
+order by rank desc
+limit 10
+        """
+        result = db.session.connection().execute(query_sql, {"query_text": query_text},)
+        return self.json_response([dict(r) for r in result])
 
     @has_access_api
     @event_logger.log_this
