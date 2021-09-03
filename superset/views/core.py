@@ -211,7 +211,7 @@ with vars_cte (query, normalization) as (
            -- this is needed so that we can collate results between
            -- multiple superset instances.
            -- Other bit flags can be used here to change how ranks are determined.
-           32
+           1|32
 )
 -- see https://www.postgresql.org/docs/10/textsearch-controls.html and related docs
 select
