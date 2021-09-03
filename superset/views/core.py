@@ -217,13 +217,15 @@ with vars_cte (query, normalization) as (
 select
     'dashboard' as type,
     id,
+    uuid,
     dashboard_title as title,
     description,
     -- combine the title vector and the description vector
     ts_rank_cd(vec_title || vec_desc, query, normalization) as rank,
     -- headline is the string, but with markup highlighting the locations of matches
     ts_headline(dashboard_title, query) as title_headline,
-    ts_headline(description, query) as description_headline
+    ts_headline(description, query) as description_headline,
+    changed_on
 from
     dashboards,
     vars_cte,
@@ -241,11 +243,13 @@ select
     -- column names here are inherited from the first query of the union
     'slice',
     id,
+    uuid,
     slice_name,
     description,
     ts_rank_cd(vec_title || vec_desc, query, normalization),
     ts_headline(slice_name, query),
-    ts_headline(description, query)
+    ts_headline(description, query),
+    changed_on
 from
     slices,
     vars_cte,
