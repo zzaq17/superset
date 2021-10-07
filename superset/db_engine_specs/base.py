@@ -67,6 +67,28 @@ from superset.utils.hashing import md5_sha_from_str
 from superset.utils.memoized import memoized
 from superset.utils.network import is_hostname_valid, is_port_open
 
+
+class ValidatedField:
+    """
+    A database field that can be validated onBlur
+    """
+
+
+class ValidatedString(ValidatedField, fields.String):
+    pass
+
+
+def validated_field_properties(self, field: Any, **_) -> Dict[str, Any]:
+    ret = {}
+    if isinstance(field, ValidatedField):
+        if self.openapi_version.major > 2:
+            ret["x-validated"] = True
+            ret["metadata"] = field.metadata
+    return ret
+
+
+ma_plugin = MarshmallowPlugin()
+
 if TYPE_CHECKING:
     # prevent circular imports
     from superset.connectors.sqla.models import TableColumn
@@ -1365,7 +1387,12 @@ class BaseEngineSpec:  # pylint: disable=too-many-public-methods
 # schema for adding a database by providing parameters instead of the
 # full SQLAlchemy URI
 class BasicParametersSchema(Schema):
-    username = fields.String(required=True, allow_none=True, description=__("Username"))
+    username = ValidatedString(
+        required=True,
+        allow_none=True,
+        description=__("Username"),
+        metadata={"foo": "bar"},
+    )
     password = fields.String(allow_none=True, description=__("Password"))
     host = fields.String(required=True, description=__("Hostname or IP address"))
     port = fields.Integer(
@@ -1558,7 +1585,11 @@ class BasicParametersMixin:
             title="Database Parameters",
             version="1.0.0",
             openapi_version="3.0.2",
-            plugins=[MarshmallowPlugin()],
+            plugins=[ma_plugin],
         )
+
+        ma_plugin.init_spec(spec)
+        ma_plugin.converter.add_attribute_function(validated_field_properties)
+
         spec.components.schema(cls.__name__, schema=cls.parameters_schema)
         return spec.to_dict()["components"]["schemas"][cls.__name__]
