@@ -42,7 +42,6 @@ module.exports = {
     'prettier',
     'prettier/react',
     'plugin:react-hooks/recommended',
-    'plugin:react-prefer-function-component/recommended',
   ],
   parser: '@babel/eslint-parser',
   parserOptions: {
@@ -86,14 +85,8 @@ module.exports = {
         'prettier',
         'prettier/@typescript-eslint',
         'prettier/react',
-        'plugin:react-prefer-function-component/recommended',
       ],
-      plugins: [
-        '@typescript-eslint/eslint-plugin',
-        'prettier',
-        'react',
-        'react-prefer-function-component',
-      ],
+      plugins: ['@typescript-eslint/eslint-plugin', 'prettier', 'react'],
       rules: {
         '@typescript-eslint/ban-ts-ignore': 0,
         '@typescript-eslint/ban-ts-comment': 0, // disabled temporarily
@@ -101,11 +94,11 @@ module.exports = {
         '@typescript-eslint/no-empty-function': 0,
         '@typescript-eslint/no-explicit-any': 0,
         '@typescript-eslint/no-use-before-define': 1, // disabled temporarily
-        '@typescript-eslint/no-non-null-assertion': 0, // disabled temporarily
         '@typescript-eslint/explicit-function-return-type': 0,
         '@typescript-eslint/explicit-module-boundary-types': 0, // re-enable up for discussion
         camelcase: 0,
         'class-methods-use-this': 0,
+        curly: 1,
         'func-names': 0,
         'guard-for-in': 0,
         'import/no-cycle': 0, // re-enable up for discussion, might require some major refactors
@@ -138,7 +131,6 @@ module.exports = {
         'padded-blocks': 0,
         'prefer-arrow-callback': 0,
         'prefer-destructuring': ['error', { object: true, array: false }],
-        'react-prefer-function-component/react-prefer-function-component': 1,
         'react/destructuring-assignment': 0, // re-enable up for discussion
         'react/forbid-prop-types': 0,
         'react/jsx-filename-extension': [1, { extensions: ['.jsx', '.tsx'] }],
@@ -230,7 +222,7 @@ module.exports = {
       },
     ],
     'class-methods-use-this': 0,
-    curly: 2,
+    curly: 1,
     'func-names': 0,
     'guard-for-in': 0,
     'import/extensions': [
@@ -279,7 +271,6 @@ module.exports = {
     'no-shadow': 0, // re-enable up for discussion
     'padded-blocks': 0,
     'prefer-arrow-callback': 0,
-    'react-prefer-function-component/react-prefer-function-component': 1,
     'prefer-object-spread': 1,
     'prefer-destructuring': ['error', { object: true, array: false }],
     'react/destructuring-assignment': 0, // re-enable up for discussion
@@ -298,5 +289,4 @@ module.exports = {
     'react/static-property-placement': 0, // disabled temporarily
     'prettier/prettier': 'error',
   },
-  ignorePatterns,
 };
