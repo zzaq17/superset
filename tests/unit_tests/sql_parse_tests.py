@@ -15,7 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
-# pylint: disable=invalid-name
+# pylint: disable=invalid-name, too-many-lines
 
 import unittest
 from typing import Set
@@ -557,9 +557,8 @@ def test_extract_tables_complex() -> None:
     """
     Test a few complex queries.
     """
-    assert (
-        extract_tables(
-            """
+    assert extract_tables(
+        """
 SELECT sum(m_examples) AS "sum__m_example"
 FROM (
     SELECT
@@ -580,14 +579,12 @@ FROM (
 ORDER BY "sum__m_example" DESC
 LIMIT 10;
 """
-        )
-        == {
-            Table("my_l_table"),
-            Table("my_b_table"),
-            Table("my_t_table"),
-            Table("inner_table"),
-        }
-    )
+    ) == {
+        Table("my_l_table"),
+        Table("my_b_table"),
+        Table("my_t_table"),
+        Table("inner_table"),
+    }
 
     assert (
         extract_tables(
@@ -1127,7 +1124,8 @@ def test_sqlparse_formatting():
 
     """
     assert sqlparse.format(
-        "SELECT extract(HOUR from from_unixtime(hour_ts) AT TIME ZONE 'America/Los_Angeles') from table",
+        "SELECT extract(HOUR from from_unixtime(hour_ts) "
+        "AT TIME ZONE 'America/Los_Angeles') from table",
         reindent=True,
     ) == (
         "SELECT extract(HOUR\n               from from_unixtime(hour_ts) "
@@ -1153,7 +1151,7 @@ def test_strip_comments_from_sql() -> None:
     )
 
 
-def test_validate_filter_clause_valid():
+def test_validate_filter_clause_valid() -> None:
     # regular clauses
     assert validate_filter_clause("col = 1") is None
     assert validate_filter_clause("1=\t\n1") is None
@@ -1166,36 +1164,53 @@ def test_validate_filter_clause_valid():
     assert validate_filter_clause("col = 'abc -- comment'") is None
 
 
-def test_validate_filter_clause_closing_unclosed():
+def test_validate_filter_clause_closing_unclosed() -> None:
     with pytest.raises(QueryClauseValidationException):
         validate_filter_clause("col1 = 1) AND (col2 = 2)")
 
 
-def test_validate_filter_clause_unclosed():
+def test_validate_filter_clause_unclosed() -> None:
     with pytest.raises(QueryClauseValidationException):
         validate_filter_clause("(col1 = 1) AND (col2 = 2")
 
 
-def test_validate_filter_clause_closing_and_unclosed():
+def test_validate_filter_clause_closing_and_unclosed() -> None:
     with pytest.raises(QueryClauseValidationException):
         validate_filter_clause("col1 = 1) AND (col2 = 2")
 
 
-def test_validate_filter_clause_closing_and_unclosed_nested():
+def test_validate_filter_clause_closing_and_unclosed_nested() -> None:
     with pytest.raises(QueryClauseValidationException):
         validate_filter_clause("(col1 = 1)) AND ((col2 = 2)")
 
 
-def test_validate_filter_clause_multiple():
+def test_validate_filter_clause_multiple() -> None:
     with pytest.raises(QueryClauseValidationException):
         validate_filter_clause("TRUE; SELECT 1")
 
 
-def test_validate_filter_clause_comment():
+def test_validate_filter_clause_comment() -> None:
     with pytest.raises(QueryClauseValidationException):
         validate_filter_clause("1 = 1 -- comment")
 
 
-def test_validate_filter_clause_subquery_comment():
+def test_validate_filter_clause_subquery_comment() -> None:
     with pytest.raises(QueryClauseValidationException):
         validate_filter_clause("(1 = 1 -- comment\n)")
+
+
+def test_order_by():
+    """
+    Test for a regression when extracting tables.
+    """
+    assert (
+        extract_tables(
+            """
+        SELECT *
+            FROM
+                (SELECT 1 as foo, 2 as bar)
+                ORDER BY foo ASC, bar
+    """
+        )
+        == set()
+    )
