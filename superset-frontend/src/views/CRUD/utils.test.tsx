@@ -23,7 +23,6 @@ import {
   getPasswordsNeeded,
   getAlreadyExists,
   hasTerminalValidation,
-  checkUploadExtensions,
 } from 'src/views/CRUD/utils';
 
 const terminalErrors = {
@@ -186,20 +185,4 @@ test('successfully modified rison to encode correctly', () => {
     expect(actualEncoding).toEqual(expectedEncoding);
     expect(rison.decode(actualEncoding)).toEqual(testObject);
   });
-});
-
-test('checkUploadExtenssions should return valid upload extensions', () => {
-  const uploadExtensionTest = ['a', 'b', 'c'];
-  const randomExtension = ['a', 'c'];
-  const randomExtensionTwo = ['c'];
-  const randomExtensionThree: Array<any> = [];
-  expect(
-    checkUploadExtensions(randomExtension, uploadExtensionTest),
-  ).toBeTruthy();
-  expect(
-    checkUploadExtensions(randomExtensionTwo, uploadExtensionTest),
-  ).toBeTruthy();
-  expect(
-    checkUploadExtensions(randomExtensionThree, uploadExtensionTest),
-  ).toBeFalsy();
 });
