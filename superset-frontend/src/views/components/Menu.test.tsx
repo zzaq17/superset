@@ -89,26 +89,6 @@ const mockedProps = {
         url: '/dashboard/list/',
         index: 4,
       },
-      {
-        name: 'Data',
-        icon: 'fa-database',
-        label: 'Data',
-        childs: [
-          {
-            name: 'Databases',
-            icon: 'fa-database',
-            label: 'Databases',
-            url: '/databaseview/list/',
-          },
-          {
-            name: 'Datasets',
-            icon: 'fa-table',
-            label: 'Datasets',
-            url: '/tablemodelview/list/',
-          },
-          '-',
-        ],
-      },
     ],
     brand: {
       path: '/superset/profile/admin/',
@@ -240,11 +220,13 @@ test('should render the dropdown items', async () => {
   render(<Menu {...notanonProps} />);
   const dropdown = screen.getByTestId('new-dropdown-icon');
   userEvent.hover(dropdown);
-  // todo (philip): test data submenu
-  expect(await screen.findByText(dropdownItems[1].label)).toHaveAttribute(
+  expect(await screen.findByText(dropdownItems[0].label)).toHaveAttribute(
     'href',
-    dropdownItems[1].url,
+    dropdownItems[0].url,
   );
+  expect(
+    screen.getByTestId(`menu-item-${dropdownItems[0].label}`),
+  ).toBeInTheDocument();
   expect(await screen.findByText(dropdownItems[1].label)).toHaveAttribute(
     'href',
     dropdownItems[1].url,
