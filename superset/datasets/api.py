@@ -53,6 +53,7 @@ from superset.datasets.commands.refresh import RefreshDatasetCommand
 from superset.datasets.commands.update import UpdateDatasetCommand
 from superset.datasets.dao import DatasetDAO
 from superset.datasets.filters import DatasetIsNullOrEmptyFilter
+from superset.datasets.models import Dataset
 from superset.datasets.schemas import (
     DatasetPostSchema,
     DatasetPutSchema,
@@ -199,6 +200,14 @@ class DatasetRestApi(BaseSupersetModelRestApi):
         "get_export_ids_schema": get_export_ids_schema,
     }
     openapi_spec_component_schemas = (DatasetRelatedObjectsResponse,)
+
+    @expose("/", methods=["GET"])
+    def get_list(self, **kwargs):
+        from superset import db
+
+        self.datamodel = SQLAInterface(Dataset, session=db.session)
+        response = self.get_list_headless(**kwargs)
+        return response
 
     @expose("/", methods=["POST"])
     @protect()

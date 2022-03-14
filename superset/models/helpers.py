@@ -423,11 +423,11 @@ class AuditMixinNullable(AuditMixin):
     @renders("changed_on")
     def changed_on_utc(self) -> str:
         # Convert naive datetime to UTC
-        return self.changed_on.astimezone(pytz.utc).strftime("%Y-%m-%dT%H:%M:%S.%f%z")
+        return "todo"  # return self.changed_on.astimezone(pytz.utc).strftime("%Y-%m-%dT%H:%M:%S.%f%z")
 
     @property
     def changed_on_humanized(self) -> str:
-        return humanize.naturaltime(datetime.now() - self.changed_on)
+        return "todo"  # return humanize.naturaltime(datetime.now() - self.changed_on)
 
     @renders("changed_on")
     def modified(self) -> Markup:
