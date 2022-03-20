@@ -950,6 +950,7 @@ const DatabaseModal: FunctionComponent<DatabaseModalProps> = ({
         ?.filter((db: DatabaseForm) => db.preferred)
         .map((database: DatabaseForm) => (
           <IconButton
+            key={database.name}
             className="preferred-item"
             onClick={() => setDatabaseModel(database.name)}
             buttonText={database.name}
