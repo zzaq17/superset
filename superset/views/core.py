@@ -2120,6 +2120,7 @@ class Superset(BaseSupersetView):  # pylint: disable=too-many-public-methods
                 filterable=True,
                 groupby=True,
                 is_dttm=config_.get("is_dttm", False),
+                is_temporal=config_.get("is_temporal", False),
                 type=config_.get("type", False),
             )
             cols.append(col)
