@@ -16,6 +16,8 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
+
 .grid-row {
   position: relative;
   display: flex;
@@ -82,5 +84,19 @@
     width: 100%;
     height: 100%;
     color: @gray;
+  }
+}
+
+// hack the planet!!!
+@media screen and (max-width: 767px) {
+  .grid-row {
+    flex-direction: column;
+    & > *, .resizable-container {
+      width: 100% !important;
+      min-width: 100% !important;
+      max-width: 100% !important;
+      max-height: none;
+      margin: 4px !important;
+    }
   }
 }

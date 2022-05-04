@@ -106,6 +106,13 @@ const Styles = styled.div`
   .slice_container {
     height: ${p => p.height}px;
   }
+  @media (max-width: 420px) {
+    min-height: 0;
+    max-height: none;
+    .slice_container {
+      height: auto;
+    }
+  }
 `;
 
 const MonospaceDiv = styled.div`
@@ -306,6 +313,7 @@ class Chart extends React.PureComponent {
           <div className="slice_container" data-test="slice-container">
             <ChartRenderer
               {...this.props}
+              width={window.innerWidth > 767 ? this.props.width : "100%"}
               source={this.props.dashboardId ? 'dashboard' : 'explore'}
               data-test={this.props.vizType}
             />

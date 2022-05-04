@@ -85,6 +85,9 @@ export interface MenuObjectProps extends MenuObjectChildProps {
 
 const StyledHeader = styled.header`
   ${({ theme }) => `
+      @media (max-width: 420px) {
+        display: none;
+      }
       background-color: ${theme.colors.grayscale.light5};
       margin-bottom: 2px;
       &:nth-last-of-type(2) nav {
@@ -128,9 +131,6 @@ const StyledHeader = styled.header`
           overflow: hidden;
           text-overflow: ellipsis;
         }
-        @media (max-width: 1127px) {
-          display: none;
-        }
       }
       .main-nav .ant-menu-submenu-title > svg {
         top: ${theme.gridUnit * 5.25}px;
@@ -146,6 +146,9 @@ const StyledHeader = styled.header`
       }
       .ant-menu > .ant-menu-item > a {
         padding: ${theme.gridUnit * 4}px;
+      }
+      @media (max-width: 767px) {
+        display: none;
       }
       @media (max-width: 767px) {
         .ant-menu-item {

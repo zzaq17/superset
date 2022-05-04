@@ -121,6 +121,11 @@ const StyledDashboardHeader = styled.div`
   padding: 0 ${({ theme }) => theme.gridUnit * 6}px;
   border-bottom: 1px solid ${({ theme }) => theme.colors.grayscale.light2};
 
+  @media (max-width: 767px) {
+    .action-button {
+      display: none;
+    }
+  }
   .action-button > span {
     color: ${({ theme }) => theme.colors.grayscale.base};
   }
