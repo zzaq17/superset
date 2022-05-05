@@ -78,6 +78,12 @@ const ActionButtonsContainer = styled.div`
       }
     }
   `};
+
+  @media (max-width: 767px) {
+    bottom: auto;
+    width: 100%;
+    position: relative;
+  }
 `;
 
 export const ActionButtons = ({

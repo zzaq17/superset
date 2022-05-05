@@ -82,6 +82,11 @@ const StyledDiv = styled.div`
   flex: 1;
   /* Special cases */
 
+  @media (max-width: 767px) {
+    display: flex;
+    flex-direction: column;
+  }
+  
   /* A row within a column has inset hover menu */
   .dragdroppable-column .dragdroppable-row .hover-menu--left {
     left: -12px;
@@ -136,6 +141,10 @@ const StickyPanel = styled.div<{ width: number }>`
   top: -1px;
   width: ${({ width }) => width}px;
   flex: 0 0 ${({ width }) => width}px;
+  @media (max-width: 767px) {
+    position: relative;
+    width: 100%;
+  }
 `;
 
 // @z-index-above-dashboard-popovers (99) + 1 = 100
@@ -145,6 +154,11 @@ const StyledHeader = styled.div`
   position: sticky;
   top: 0;
   z-index: 100;
+  @media (max-width: 767px) {
+    .dragdroppable {
+      margin-left: 0px !important;
+    }
+  }
 `;
 
 const StyledContent = styled.div<{

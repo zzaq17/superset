@@ -85,7 +85,7 @@ export interface MenuObjectProps extends MenuObjectChildProps {
 
 const StyledHeader = styled.header`
   ${({ theme }) => `
-      @media (max-width: 420px) {
+      @media (max-width: 767px) {
         display: none;
       }
       background-color: ${theme.colors.grayscale.light5};

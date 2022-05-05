@@ -36,6 +36,7 @@ import {
   DataMask,
   HandlerFunction,
   styled,
+  css,
   t,
   SLOW_DEBOUNCE,
   isNativeFilter,
@@ -80,8 +81,16 @@ const BarWrapper = styled.div<{ width: number }>`
   & .ant-tabs-top > .ant-tabs-nav {
     margin: 0;
   }
+  
   &.open {
     width: ${({ width }) => width}px; // arbitrary...
+  }
+  @media (max-width: 767px) {
+    width: 100%;
+    height: auto;
+    &.open {
+      width: 100%;
+    }
   }
 `;
 
@@ -105,6 +114,16 @@ const Bar = styled.div<{ width: number }>`
   &.open {
     display: flex;
   }
+  @media (max-width: 767px) {
+    width: 100%;
+    position: relative;
+    min-height: 0;
+    /* If you want to try fullscreen, this is a start... */
+    /* position: absolute; // or fixed?
+    margin: ${({ theme }) => theme.gridUnit * 2}px;
+    height: calc(100vh - ${({ theme }) => theme.gridUnit * 4}px);
+    width: calc(100vw - ${({ theme }) => theme.gridUnit * 4}px); */
+  }
 `;
 
 const CollapsedBar = styled.div<{ offset: number }>`
@@ -125,11 +144,30 @@ const CollapsedBar = styled.div<{ offset: number }>`
   svg {
     cursor: pointer;
   }
+  @media (max-width: 767px) {
+    position: relative;
+    top: 0;
+    width: 100%;
+    left: auto;
+    right: auto;
+    &.open {
+      flex-direction: row-reverse;
+      justify-content: flex-end;
+    }
+    &::after {
+      content: "Filters";
+      margin-right: ${({ theme }) => theme.gridUnit}px;
+    }
+  }
 `;
 
 const StyledCollapseIcon = styled(Icons.Collapse)`
   color: ${({ theme }) => theme.colors.primary.base};
   margin-bottom: ${({ theme }) => theme.gridUnit * 3}px;
+  @media (max-width: 767px) {
+    /* margin-bottom: auto; */
+    display: none;
+  }
 `;
 
 const StyledFilterIcon = styled(Icons.Filter)`
@@ -469,7 +507,11 @@ const FilterBar: React.FC<FiltersBarProps> = ({
               </AntdTabs.TabPane>
             </StyledTabs>
           ) : (
-            <div css={tabPaneStyle} onScroll={onScroll}>
+            <div css={[tabPaneStyle, css`
+              @media (max-width: 767px){
+                height: auto;
+              }
+            `]} onScroll={onScroll}>
               {filterValues.length === 0 ? (
                 <FilterBarEmptyStateContainer>
                   <EmptyStateSmall

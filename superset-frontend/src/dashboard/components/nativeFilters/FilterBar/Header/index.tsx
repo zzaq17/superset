@@ -41,6 +41,17 @@ const TitleArea = styled.h4`
 
 const HeaderButton = styled(Button)`
   padding: 0;
+  @media (max-width: 767px){
+    svg {
+       display: none;
+     }
+    &::after {
+      content: '\\2715';
+      width: ${({ theme }) => theme.gridUnit * 6}px;
+      height: ${({ theme }) => theme.gridUnit * 6}px; 
+    }
+  }
+
 `;
 
 const Wrapper = styled.div`
@@ -67,6 +78,10 @@ const AddFiltersButtonContainer = styled.div`
 
     .ant-btn > .anticon + span {
       margin-left: 0;
+    }
+    @media (max-width: 767px) {
+      // hide the add/edit filters button because the modal SUUUUUCKS.
+      display: none;
     }
   `}
 `;
