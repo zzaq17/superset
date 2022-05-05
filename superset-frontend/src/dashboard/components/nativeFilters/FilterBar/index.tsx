@@ -81,7 +81,7 @@ const BarWrapper = styled.div<{ width: number }>`
   & .ant-tabs-top > .ant-tabs-nav {
     margin: 0;
   }
-  
+
   &.open {
     width: ${({ width }) => width}px; // arbitrary...
   }
@@ -155,7 +155,7 @@ const CollapsedBar = styled.div<{ offset: number }>`
       justify-content: flex-end;
     }
     &::after {
-      content: "Filters";
+      content: 'Filters';
       margin-right: ${({ theme }) => theme.gridUnit}px;
     }
   }
@@ -507,11 +507,17 @@ const FilterBar: React.FC<FiltersBarProps> = ({
               </AntdTabs.TabPane>
             </StyledTabs>
           ) : (
-            <div css={[tabPaneStyle, css`
-              @media (max-width: 767px){
-                height: auto;
-              }
-            `]} onScroll={onScroll}>
+            <div
+              css={[
+                tabPaneStyle,
+                css`
+                  @media (max-width: 767px) {
+                    height: auto;
+                  }
+                `,
+              ]}
+              onScroll={onScroll}
+            >
               {filterValues.length === 0 ? (
                 <FilterBarEmptyStateContainer>
                   <EmptyStateSmall

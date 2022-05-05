@@ -41,17 +41,16 @@ const TitleArea = styled.h4`
 
 const HeaderButton = styled(Button)`
   padding: 0;
-  @media (max-width: 767px){
+  @media (max-width: 767px) {
     svg {
-       display: none;
-     }
+      display: none;
+    }
     &::after {
       content: '\\2715';
       width: ${({ theme }) => theme.gridUnit * 6}px;
-      height: ${({ theme }) => theme.gridUnit * 6}px; 
+      height: ${({ theme }) => theme.gridUnit * 6}px;
     }
   }
-
 `;
 
 const Wrapper = styled.div`
