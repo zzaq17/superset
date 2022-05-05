@@ -86,7 +86,7 @@ const StyledDiv = styled.div`
     display: flex;
     flex-direction: column;
   }
-  
+
   /* A row within a column has inset hover menu */
   .dragdroppable-column .dragdroppable-row .hover-menu--left {
     left: -12px;
@@ -134,6 +134,12 @@ const FiltersPanel = styled.div`
   grid-column: 1;
   grid-row: 1 / span 2;
   z-index: 11;
+
+  @media (max-width: 767px) {
+    background: ${({ theme }) => theme.colors.grayscale.light5};
+    position: sticky;
+    top: 0;
+  }
 `;
 
 const StickyPanel = styled.div<{ width: number }>`
@@ -144,17 +150,21 @@ const StickyPanel = styled.div<{ width: number }>`
   @media (max-width: 767px) {
     position: relative;
     width: 100%;
+    height: 100%;
   }
 `;
 
 // @z-index-above-dashboard-popovers (99) + 1 = 100
-const StyledHeader = styled.div`
+const StyledHeader = styled.div<{
+  dashboardFiltersOpen: boolean;
+}>`
   grid-column: 2;
   grid-row: 1;
   position: sticky;
-  top: 0;
+  top: 32px;
   z-index: 100;
   @media (max-width: 767px) {
+    ${({ dashboardFiltersOpen }) => dashboardFiltersOpen && `display: none;`}
     .dragdroppable {
       margin-left: 0px !important;
     }
@@ -421,7 +431,7 @@ const DashboardBuilder: FC<DashboardBuilderProps> = () => {
           </StickyPanel>
         </FiltersPanel>
       )}
-      <StyledHeader ref={headerRef}>
+      <StyledHeader ref={headerRef} dashboardFiltersOpen={dashboardFiltersOpen}>
         {/* @ts-ignore */}
         <DragDroppable
           data-test="top-level-tabs"
