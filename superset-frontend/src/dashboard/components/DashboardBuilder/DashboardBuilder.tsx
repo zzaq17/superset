@@ -137,8 +137,11 @@ const FiltersPanel = styled.div`
 
   @media (max-width: 767px) {
     background: ${({ theme }) => theme.colors.grayscale.light5};
-    position: sticky;
+    position: fixed;
+    left: 0;
+    bottom: 0;
     top: 0;
+    z-index: 200; // make it go above the dashboard header
   }
 `;
 
@@ -155,16 +158,14 @@ const StickyPanel = styled.div<{ width: number }>`
 `;
 
 // @z-index-above-dashboard-popovers (99) + 1 = 100
-const StyledHeader = styled.div<{
-  dashboardFiltersOpen: boolean;
-}>`
+const StyledHeader = styled.div`
   grid-column: 2;
   grid-row: 1;
-  position: sticky;
+  /* position: sticky; */
   top: 32px;
   z-index: 100;
   @media (max-width: 767px) {
-    ${({ dashboardFiltersOpen }) => dashboardFiltersOpen && `display: none;`}
+    /* ${({ dashboardFiltersOpen }) => dashboardFiltersOpen && `display: none;`} */
     .dragdroppable {
       margin-left: 0px !important;
     }

@@ -39,7 +39,7 @@ const TitleArea = styled.h4`
   }
 `;
 
-const MobileCollapse = styled(Icons.UpOutlined)`
+const MobileCollapse = styled(Icons.LeftOutlined)`
   @media (min-width: 768px) {
     .ant-btn > .anticon + span {
       margin: 0;
