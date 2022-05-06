@@ -158,14 +158,15 @@ const StickyPanel = styled.div<{ width: number }>`
 `;
 
 // @z-index-above-dashboard-popovers (99) + 1 = 100
-const StyledHeader = styled.div`
+const StyledHeader = styled.div<{ dashboardFiltersOpen: boolean }>`
   grid-column: 2;
   grid-row: 1;
   /* position: sticky; */
   top: 32px;
   z-index: 100;
   @media (max-width: 767px) {
-    /* ${({ dashboardFiltersOpen }) => dashboardFiltersOpen && `display: none;`} */
+    /* ${({ dashboardFiltersOpen }) =>
+      dashboardFiltersOpen && `display: none;`} */
     .dragdroppable {
       margin-left: 0px !important;
     }

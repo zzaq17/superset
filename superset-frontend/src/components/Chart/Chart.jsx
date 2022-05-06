@@ -314,7 +314,7 @@ class Chart extends React.PureComponent {
             <ChartRenderer
               {...this.props}
               // this is gross..
-              width={window.innerWidth > 767 ? this.props.width : "100%"}
+              width={window.innerWidth > 767 ? this.props.width : '100%'}
               source={this.props.dashboardId ? 'dashboard' : 'explore'}
               data-test={this.props.vizType}
             />

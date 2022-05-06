@@ -36,7 +36,6 @@ import {
   DataMask,
   HandlerFunction,
   styled,
-  css,
   t,
   SLOW_DEBOUNCE,
   isNativeFilter,
@@ -81,7 +80,7 @@ const BarWrapper = styled.div<{ width: number }>`
   & .ant-tabs-top > .ant-tabs-nav {
     margin: 0;
   }
-  
+
   &.open {
     width: ${({ width }) => width}px; // arbitrary...
   }
@@ -143,16 +142,14 @@ const CollapsedBar = styled.div<{ offset: number }>`
     width: ${({ theme }) => theme.gridUnit * 10}px;
     height: ${({ theme }) => theme.gridUnit * 10}px;
     border-radius: ${({ theme }) => theme.gridUnit * 5}px;
-    box-shadow: ${({ theme }) => theme.gridUnit}px ${({ theme }) => theme.gridUnit}px ${({ theme }) => theme.gridUnit}px ${({ theme }) => theme.colors.primary.light2};
+    box-shadow: ${({ theme }) => theme.gridUnit}px
+      ${({ theme }) => theme.gridUnit}px ${({ theme }) => theme.gridUnit}px
+      ${({ theme }) => theme.colors.primary.light2};
     top: auto;
     &.open {
       flex-direction: row-reverse;
       justify-content: center;
     }
-    /* &::after {
-      content: "Filters";
-      margin-right: ${({ theme }) => theme.gridUnit}px;
-    } */
   }
 `;
 

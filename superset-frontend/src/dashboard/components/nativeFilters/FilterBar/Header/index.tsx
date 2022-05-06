@@ -39,28 +39,6 @@ const TitleArea = styled.h4`
   }
 `;
 
-const MobileCollapse = styled(Icons.LeftOutlined)`
-  @media (min-width: 768px) {
-    .ant-btn > .anticon + span {
-      margin: 0;
-    }
-    svg {
-      display: none;
-    }
-  }
-`;
-
-const Collapse = styled(Icons.Expand)`
-  @media (max-width: 767px) {
-    .ant-btn > .anticon + span {
-      margin: 0;
-    }
-    svg {
-      display: none;
-    }
-  }
-`;
-
 const HeaderButton = styled(Button)`
   padding: 0;
 `;
@@ -118,8 +96,7 @@ const Header: FC<HeaderProps> = ({ toggleFiltersBar }) => {
           buttonSize="xsmall"
           onClick={() => toggleFiltersBar(false)}
         >
-          <Collapse iconColor={theme.colors.grayscale.base} />
-          <MobileCollapse iconSize="l" />
+          <Icons.Expand iconColor={theme.colors.grayscale.base} />
         </HeaderButton>
       </TitleArea>
       {canEdit && (
