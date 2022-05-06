@@ -18,7 +18,7 @@
  */
 import React from 'react';
 import PropTypes from 'prop-types';
-import { t } from '@superset-ui/core';
+import { styled, t } from '@superset-ui/core';
 import { Tooltip } from 'src/components/Tooltip';
 import Label from 'src/components/Label';
 
@@ -44,6 +44,13 @@ const publishedTooltip = t(
   'This dashboard is published. Click to make it a draft.',
 );
 
+const StyledLabel = styled(Label)`
+  margin: 0;
+  @media (max-width: 767px) {
+    font-size: ${({ theme }) => theme.typography.sizes.xs}px;
+  }
+`;
+
 export default class PublishedStatus extends React.Component {
   componentDidMount() {
     this.togglePublished = this.togglePublished.bind(this);
@@ -64,13 +71,13 @@ export default class PublishedStatus extends React.Component {
             placement="bottom"
             title={draftButtonTooltip}
           >
-            <Label
+            <StyledLabel
               onClick={() => {
                 this.togglePublished();
               }}
             >
               {t('Draft')}
-            </Label>
+            </StyledLabel>
           </Tooltip>
         );
       }
@@ -80,7 +87,7 @@ export default class PublishedStatus extends React.Component {
           placement="bottom"
           title={draftDivTooltip}
         >
-          <Label>{t('Draft')}</Label>
+          <StyledLabel>{t('Draft')}</StyledLabel>
         </Tooltip>
       );
     }
@@ -93,13 +100,13 @@ export default class PublishedStatus extends React.Component {
           placement="bottom"
           title={publishedTooltip}
         >
-          <Label
+          <StyledLabel
             onClick={() => {
               this.togglePublished();
             }}
           >
             {t('Published')}
-          </Label>
+          </StyledLabel>
         </Tooltip>
       );
     }

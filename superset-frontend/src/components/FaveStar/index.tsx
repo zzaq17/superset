@@ -35,7 +35,8 @@ const StyledLink = styled.a`
   ${({ theme }) => css`
     font-size: ${theme.typography.sizes.xl}px;
     display: flex;
-    padding: 0 0 0 ${theme.gridUnit * 2}px;
+    margin: 0;
+    padding: 0;
   `};
 `;
 

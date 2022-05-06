@@ -125,6 +125,11 @@ const StyledDashboardHeader = styled.div`
     .action-button {
       display: none;
     }
+
+    .header-large {
+      font-weight: ${({ theme }) => theme.typography.weights.bold};
+      font-size: ${({ theme }) => theme.typography.sizes.l}px;
+    }
   }
   .action-button > span {
     color: ${({ theme }) => theme.colors.grayscale.base};
