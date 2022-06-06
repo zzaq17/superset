@@ -17,7 +17,7 @@
 """A collection of ORM sqlalchemy models for SQL Lab"""
 import re
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Type, TYPE_CHECKING
+from typing import Any, Dict, List, Type
 
 import simplejson as json
 import sqlalchemy as sqla
@@ -52,11 +52,9 @@ from superset.sqllab.limiting_factor import LimitingFactor
 from superset.superset_typing import ResultSetColumnType
 from superset.utils.core import GenericDataType, QueryStatus, user_label
 
-if TYPE_CHECKING:
-    from superset.db_engine_specs import BaseEngineSpec
+from superset.superset_typing import ResultSetColumnType
 
-
-class Query(Model, ExtraJSONMixin, ExploreMixin):  # pylint: disable=abstract-method
+class Query(Model, ExtraJSONMixin, ExploreMixin):
     """ORM model for SQL query
 
     Now that SQL Lab support multi-statement execution, an entry in this
@@ -174,6 +172,8 @@ class Query(Model, ExtraJSONMixin, ExploreMixin):  # pylint: disable=abstract-me
 
     @property
     def columns(self) -> List[ResultSetColumnType]:
+        # todo(hughhh): move this logic into a base class
+        from superset.utils.core import GenericDataType
         bool_types = ("BOOL",)
         num_types = (
             "DOUBLE",
@@ -189,11 +189,10 @@ class Query(Model, ExtraJSONMixin, ExploreMixin):  # pylint: disable=abstract-me
         )
         date_types = ("DATE", "TIME")
         str_types = ("VARCHAR", "STRING", "CHAR")
-        columns = []
-        col_type = ""
+        columns = [] 
         for col in self.extra.get("columns", []):
             computed_column = {**col}
-            col_type = col.get("type")
+            col_type = col.get('type')
 
             if col_type and any(map(lambda t: t in col_type.upper(), str_types)):
                 computed_column["type_generic"] = GenericDataType.STRING
@@ -204,7 +203,7 @@ class Query(Model, ExtraJSONMixin, ExploreMixin):  # pylint: disable=abstract-me
             if col_type and any(map(lambda t: t in col_type.upper(), date_types)):
                 computed_column["type_generic"] = GenericDataType.TEMPORAL
 
-            computed_column["column_name"] = col.get("name")
+            computed_column["column_name"] = col.get('name')
             computed_column["groupby"] = True
             columns.append(computed_column)
         return columns  # type: ignore
@@ -235,49 +234,6 @@ class Query(Model, ExtraJSONMixin, ExploreMixin):  # pylint: disable=abstract-me
     @property
     def db_engine_spec(self) -> Type["BaseEngineSpec"]:
         return self.database.db_engine_spec
-
-    @property
-    def owners_data(self) -> List[Dict[str, Any]]:
-        return []
-
-    @property
-    def uid(self) -> str:
-        return f"{self.id}__{self.type}"
-
-    @property
-    def is_rls_supported(self) -> bool:
-        return False
-
-    @property
-    def cache_timeout(self) -> int:
-        return 0
-
-    @property
-    def column_names(self) -> List[Any]:
-        return [col.get("column_name") for col in self.columns]
-
-    @property
-    def offset(self) -> int:
-        return 0
-
-    @property
-    def main_dttm_col(self) -> Optional[str]:
-        for col in self.columns:
-            if col.get("is_dttm"):
-                return col.get("column_name")  # type: ignore
-        return None
-
-    @property
-    def dttm_cols(self) -> List[Any]:
-        return [col.get("column_name") for col in self.columns if col.get("is_dttm")]
-
-    @property
-    def default_endpoint(self) -> str:
-        return ""
-
-    @staticmethod
-    def get_extra_cache_keys(query_obj: Dict[str, Any]) -> List[str]:
-        return []
 
 
 class SavedQuery(Model, AuditMixinNullable, ExtraJSONMixin, ImportExportMixin):

@@ -116,7 +116,7 @@ class QueryContextProcessor:
                         and col != DTTM_ALIAS
                     )
                 ]
-
+                breakpoint()
                 if invalid_columns:
                     raise QueryObjectValidationError(
                         _(
@@ -124,7 +124,7 @@ class QueryContextProcessor:
                             invalid_columns=invalid_columns,
                         )
                     )
-
+                
                 query_result = self.get_query_result(query_obj)
                 annotation_data = self.get_annotation_data(query_obj)
                 cache.set_query_result(
@@ -185,7 +185,6 @@ class QueryContextProcessor:
         # support multiple queries from different data sources.
 
         # The datasource here can be different backend but the interface is common
-        # pylint: disable=import-outside-toplevel
         from superset.models.sql_lab import Query
 
         query = ""
