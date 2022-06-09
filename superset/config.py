@@ -522,20 +522,57 @@ THEME_OVERRIDES = {
 # THEME_OVERRIDES: Dict[str, Any] = {}
 
 # EXTRA_SEQUENTIAL_COLOR_SCHEMES is used for adding custom sequential color schemes
-# EXTRA_SEQUENTIAL_COLOR_SCHEMES =  [
-#     {
-#         "id": 'warmToHot',
-#         "description": '',
-#         "isDiverging": True,
-#         "label": 'My custom warm to hot',
-#         "isDefault": True,
-#         "colors":
-#          ['#552288', '#5AAA46', '#CC7788', '#EEDD55', '#9977BB', '#BBAA44', '#DDCCDD',
-#          '#006699', '#009DD9', '#5AAA46', '#44AAAA', '#DDAA77', '#7799BB', '#88AA77']
-#     }]
+EXTRA_SEQUENTIAL_COLOR_SCHEMES =  [
+    {
+        "id": 'hotCold',
+        "description": '',
+        "isDiverging": True,
+        "label": 'Hot to Cold',
+        "isDefault": False,
+        "colors":
+         ['#ff0000', '#ffffff', '#00ccff']
+    },
+    {
+        "id": 'ukraine',
+        "description": '',
+        "isDiverging": True,
+        "label": 'Ukraine isDiverging',
+        "isDefault": True,
+        "colors":
+         ['#ffff00', '#00ccff']
+    },
+    {
+        "id": 'pinkIsDiverging',
+        "description": '',
+        "isDiverging": True,
+        "label": 'Magenta is Diverging',
+        "isDefault": False,
+        "colors":
+         ['#ff00ff']
+    },
+    {
+        "id": 'cyanIsNotDiverging',
+        "description": '',
+        "isDiverging": False,
+        "label": 'Cyan is Not Diverging',
+        "isDefault": False,
+        "colors":
+         ['#00ffff']
+    },
+    {
+        "id": 'hotMess',
+        "description": '',
+        "isDiverging": False,
+        "label": 'Hot Mess',
+        "isDefault": True,
+        "colors":
+         ['#ffff00', '#00ccff', '#ff0000', '#ff00ff', '#00ffff', '#ffffff']
+    }
+    
+    ]
 
 # This is merely a default
-EXTRA_SEQUENTIAL_COLOR_SCHEMES: List[Dict[str, Any]] = []
+# EXTRA_SEQUENTIAL_COLOR_SCHEMES: List[Dict[str, Any]] = []
 
 # ---------------------------------------------------
 # Thumbnail config (behind feature flag)
