@@ -61,16 +61,15 @@ from sqlalchemy_utils import UUIDType
 
 from superset import app, db, is_feature_enabled, security_manager
 from superset.common.db_query_status import QueryStatus
-from superset.connectors.sqla import SqlMetric
-from superset.db_engine_specs import BaseEngineSpec
-from superset.errors import ErrorLevel, SupersetError, SupersetErrorType
-from superset.exceptions import SupersetSecurityException
+# from superset.connectors.sqla import SqlMetric
+# from superset.errors import ErrorLevel, SupersetError, SupersetErrorType
+# from superset.exceptions import SupersetSecurityException
 from superset.jinja_context import (
     BaseTemplateProcessor,
     ExtraCache,
     get_template_processor,
 )
-from superset.models.core import Database
+# from superset.models.core import Database
 from superset.sql_parse import (
     extract_table_references,
     has_table_query,
