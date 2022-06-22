@@ -159,7 +159,6 @@ class SqlJsonExecutionContext:  # pylint: disable=too-many-instance-attributes
                 start_time=start_time,
                 tab_name=self.tab_name,
                 status=self.status,
-                limit=self.limit,
                 sql_editor_id=self.sql_editor_id,
                 tmp_table_name=self.create_table_as_select.target_table_name,  # type: ignore
                 tmp_schema_name=self.create_table_as_select.target_schema_name,  # type: ignore

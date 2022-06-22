@@ -133,13 +133,13 @@ class ExecuteSqlCommand(BaseCommand):
     def _run_sql_json_exec_from_scratch(self) -> SqlJsonExecutionStatus:
         self._execution_context.set_database(self._get_the_query_db())
         query = self._execution_context.create_query()
-        self._save_new_query(query)
         try:
             logger.info("Triggering query_id: %i", query.id)
             self._validate_access(query)
             self._execution_context.set_query(query)
             rendered_query = self._sql_query_render.render(self._execution_context)
             self._set_query_limit_if_required(rendered_query)
+            self._save_new_query(query)
             return self._sql_json_executor.execute(
                 self._execution_context, rendered_query, self._log_params
             )
