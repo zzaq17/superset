@@ -225,18 +225,6 @@ class Query(Model, ExtraJSONMixin, ExploreMixin):
             "database": {"id": self.database_id, "backend": self.database.backend},
         }
 
-    @property
-    def data(self) -> Dict[str, Any]:
-        return {
-            "columns": self.columns,
-            "metrics": [],
-            "id": self.id,
-            "type": self.type,
-            "sql": self.sql,
-            "owners": self.owners_data,
-            "database": {"id": self.database_id, "backend": self.database.backend},
-        }
-
     def raise_for_access(self) -> None:
         """
         Raise an exception if the user cannot access the resource.
@@ -282,7 +270,7 @@ class Query(Model, ExtraJSONMixin, ExploreMixin):
     def main_dttm_col(self) -> Optional[str]:
         for col in self.columns:
             if col.get("is_dttm"):
-                return col.get("column_name")
+                return col.get("column_name")  # type: ignore
         return None
 
     @property
