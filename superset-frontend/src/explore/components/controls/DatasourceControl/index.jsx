@@ -444,7 +444,7 @@ class DatasourceControl extends React.PureComponent {
             onChange={onChange}
           />
         )}
-        {showSaveDatasetModal && showSaveDatasetModal && (
+        {showSaveDatasetModal && (
           <SaveDatasetModal
             visible={showSaveDatasetModal}
             onHide={this.toggleSaveDatasetModal}
