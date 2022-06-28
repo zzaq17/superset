@@ -169,6 +169,17 @@ class DatasourceControl extends React.PureComponent {
     };
   }
 
+  getDatasourceAsSaveableDataset = source => {
+    const dataset = {
+      columns: source?.columns || [],
+      name: source?.datasource_name || t('Untitled'),
+      dbId: source.database.id,
+      sql: source?.sql || '',
+      schema: source?.schema,
+    };
+    return dataset;
+  };
+
   onDatasourceSave = datasource => {
     this.props.actions.changeDatasource(datasource);
     const timeCol = this.props.form_data?.granularity_sqla;
@@ -433,7 +444,7 @@ class DatasourceControl extends React.PureComponent {
             onChange={onChange}
           />
         )}
-        {showSaveDatasetModal && (
+        {showSaveDatasetModal && showSaveDatasetModal && (
           <SaveDatasetModal
             visible={showSaveDatasetModal}
             onHide={this.toggleSaveDatasetModal}
