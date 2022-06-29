@@ -332,7 +332,6 @@ class TestPostChartDataApi(BaseTestChartDataApi):
                 {"column": "gender"},
                 {"column": "num"},
                 {"column": "name"},
-                {"column": "__time_range"},
             ],
         )
         expected_row_count = self.get_expected_row_count("client_id_2")

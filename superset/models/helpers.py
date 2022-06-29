@@ -24,10 +24,8 @@ from datetime import datetime, timedelta
 from json.decoder import JSONDecodeError
 from typing import (
     Any,
-    Callable,
     cast,
     Dict,
-    Hashable,
     List,
     Mapping,
     NamedTuple,
@@ -55,16 +53,16 @@ from flask_appbuilder.models.mixins import AuditMixin
 from flask_appbuilder.security.sqla.models import User
 from flask_babel import lazy_gettext as _
 from jinja2.exceptions import TemplateError
-from sqlalchemy import and_, or_, UniqueConstraint
+from sqlalchemy import and_, Column, or_, UniqueConstraint
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import Mapper, Session
 from sqlalchemy.orm.exc import MultipleResultsFound
-from sqlalchemy.sql.elements import ColumnClause, TextClause
+from sqlalchemy.sql.elements import ColumnElement, literal_column, TextClause
 from sqlalchemy.sql.expression import Label, Select, TextAsFrom
 from sqlalchemy.sql.selectable import Alias, TableClause
 from sqlalchemy_utils import UUIDType
 
-from superset import app, db, is_feature_enabled, security_manager
+from superset import app, is_feature_enabled, security_manager
 from superset.advanced_data_type.types import AdvancedDataTypeResponse
 from superset.common.db_query_status import QueryStatus
 from superset.constants import EMPTY_STRING, NULL_STRING
@@ -72,29 +70,27 @@ from superset.errors import ErrorLevel, SupersetError, SupersetErrorType
 from superset.exceptions import (
     AdvancedDataTypeResponseError,
     QueryClauseValidationException,
+    QueryObjectValidationError,
     SupersetSecurityException,
 )
 from superset.extensions import feature_flag_manager
-from superset.jinja_context import (
-    BaseTemplateProcessor,
-    ExtraCache,
-    get_template_processor,
+from superset.jinja_context import BaseTemplateProcessor
+from superset.sql_parse import has_table_query, insert_rls, ParsedQuery, sanitize_clause
+from superset.superset_typing import (
+    AdhocMetric,
+    FilterValue,
+    FilterValues,
+    Metric,
+    OrderBy,
+    QueryObjectDict,
 )
-from superset.sql_parse import (
-    extract_table_references,
-    has_table_query,
-    insert_rls,
-    ParsedQuery,
-    sanitize_clause,
-    Table as TableName,
-)
-from superset.superset_typing import AdhocColumn
 from superset.utils import core as utils
 
 if TYPE_CHECKING:
     from superset.connectors.sqla.models import SqlMetric, TableColumn
     from superset.db_engine_specs import BaseEngineSpec
     from superset.models.core import Database
+
 
 config = app.config
 logger = logging.getLogger(__name__)
@@ -637,24 +633,6 @@ def clone_model(
     return target.__class__(**data)
 
 
-from typing import Any, Dict, List, NamedTuple
-
-import sqlparse
-from sqlalchemy import Column
-from sqlalchemy.sql.elements import ColumnElement, Label, literal_column
-
-from superset.exceptions import QueryObjectValidationError
-from superset.superset_typing import (
-    AdhocMetric,
-    FilterValue,
-    FilterValues,
-    Metric,
-    OrderBy,
-    QueryObjectDict,
-)
-from superset.utils import core as utils
-
-
 # todo(hugh): centralize where this code lives
 class QueryStringExtended(NamedTuple):
     applied_template_filters: Optional[List[str]]
@@ -672,7 +650,7 @@ class SqlaQuery(NamedTuple):
     sqla_query: Select
 
 
-class ExploreMixin:
+class ExploreMixin:  # pylint: disable=too-many-public-methods
     """
     Allows any flask_appbuilder.Model (Query, Table, etc.)
     to be used to power a chart inside /explore
@@ -759,7 +737,8 @@ class ExploreMixin:
     def get_extra_cache_keys(query_obj: Dict[str, Any]) -> List[str]:
         raise NotImplementedError()
 
-    def _process_sql_expression(  # type: ignore
+    def _process_sql_expression(  # type: ignore # pylint: disable=no-self-use
+        self,
         expression: Optional[str],
         database_id: int,
         schema: str,
@@ -823,8 +802,8 @@ class ExploreMixin:
             sql = f"{cte}\n{sql}"
         return sql
 
+    @staticmethod
     def validate_adhoc_subquery(
-        self,
         sql: str,
         database_id: int,
         default_schema: str,
@@ -839,8 +818,6 @@ class ExploreMixin:
         :raise SupersetSecurityException if sql contains sub-queries or
         nested sub-queries with table
         """
-        # pylint: disable=import-outside-toplevel
-        from superset import is_feature_enabled
 
         statements = []
         for statement in sqlparse.parse(sql):
@@ -969,7 +946,9 @@ class ExploreMixin:
             return df
 
         try:
-            df = self.database.get_df(sql, self.schema, mutator=assign_column_label)  # type: ignore
+            df = self.database.get_df(
+                sql, self.schema, mutator=assign_column_label  # type: ignore
+            )
         except Exception as ex:  # pylint: disable=broad-except
             df = pd.DataFrame()
             status = QueryStatus.FAILED
@@ -1051,7 +1030,7 @@ class ExploreMixin:
     def adhoc_metric_to_sqla(
         self,
         metric: AdhocMetric,
-        columns_by_name: Dict[str, Dict[str, Any]],
+        columns_by_name: Dict[str, "TableColumn"],
         template_processor: Optional[BaseTemplateProcessor] = None,
     ) -> ColumnElement:
         """
@@ -1069,11 +1048,13 @@ class ExploreMixin:
         if expression_type == utils.AdhocMetricExpressionType.SIMPLE:
             metric_column = metric.get("column") or {}
             column_name = cast(str, metric_column.get("column_name"))
-            table_column: Optional[Dict[str, Any]] = columns_by_name.get(column_name)
+            table_column: Optional["TableColumn"] = columns_by_name.get(column_name)
             sqla_column = sa.column(column_name)
+            if table_column:
+                sqla_column = table_column.get_sqla_col()
             sqla_metric = self.sqla_aggregations[metric["aggregate"]](sqla_column)
         elif expression_type == utils.AdhocMetricExpressionType.SQL:
-            expression = _process_sql_expression(  # type: ignore
+            expression = self._process_sql_expression(  # type: ignore
                 expression=metric["sqlExpression"],
                 database_id=self.database_id,
                 schema=self.schema,
@@ -1319,12 +1300,14 @@ class ExploreMixin:
         if granularity not in self.dttm_cols and granularity is not None:
             granularity = self.main_dttm_col
 
-        columns_by_name: Dict[str, TableColumn] = {
+        columns_by_name: Dict[str, "TableColumn"] = {
             col.get("column_name"): col
             for col in self.columns  # col.column_name: col for col in self.columns
         }
 
-        metrics_by_name: Dict[str, SqlMetric] = {m.metric_name: m for m in self.metrics}
+        metrics_by_name: Dict[str, "SqlMetric"] = {
+            m.metric_name: m for m in self.metrics
+        }
 
         if not granularity and is_timeseries:
             raise QueryObjectValidationError(
@@ -1373,7 +1356,7 @@ class ExploreMixin:
             if isinstance(col, dict):
                 col = cast(AdhocMetric, col)
                 if col.get("sqlExpression"):
-                    col["sqlExpression"] = _process_sql_expression(  # type: ignore
+                    col["sqlExpression"] = self._process_sql_expression(  # type: ignore
                         expression=col["sqlExpression"],
                         database_id=self.database_id,
                         schema=self.schema,
@@ -1529,7 +1512,7 @@ class ExploreMixin:
             flt_col = flt["col"]
             val = flt.get("val")
             op = flt["op"].upper()
-            col_obj: Optional[TableColumn] = None
+            col_obj: Optional["TableColumn"] = None
             sqla_col: Optional[Column] = None
             if flt_col == utils.DTTM_ALIAS and is_timeseries and dttm_col:
                 col_obj = dttm_col
@@ -1675,7 +1658,9 @@ class ExploreMixin:
             where = extras.get("where")
             if where:
                 try:
-                    where = template_processor.process_template(f"({where})")  # type: ignore
+                    where = template_processor.process_template(  # type: ignore
+                        f"({where})"
+                    )
                 except TemplateError as ex:
                     raise QueryObjectValidationError(
                         _(
@@ -1687,7 +1672,9 @@ class ExploreMixin:
             having = extras.get("having")
             if having:
                 try:
-                    having = template_processor.process_template(f"({having})")  # type: ignore
+                    having = template_processor.process_template(  # type: ignore
+                        f"({having})"
+                    )
                 except TemplateError as ex:
                     raise QueryObjectValidationError(
                         _(
