@@ -906,10 +906,7 @@ class TestSecurityManager(SupersetTestCase):
 
     @patch("superset.security.SupersetSecurityManager.can_access")
     @patch("superset.security.SupersetSecurityManager.can_access_schema")
-    @patch("superset.views.utils.is_owner")
-    def test_raise_for_access_datasource(
-        self, mock_can_access_schema, mock_can_access, mock_is_owner
-    ):
+    def test_raise_for_access_datasource(self, mock_can_access_schema, mock_can_access):
         datasource = self.get_datasource_mock()
 
         mock_can_access_schema.return_value = True
@@ -917,14 +914,12 @@ class TestSecurityManager(SupersetTestCase):
 
         mock_can_access.return_value = False
         mock_can_access_schema.return_value = False
-        mock_is_owner.return_value = False
 
         with self.assertRaises(SupersetSecurityException):
             security_manager.raise_for_access(datasource=datasource)
 
     @patch("superset.security.SupersetSecurityManager.can_access")
-    @patch("superset.views.utils.is_owner")
-    def test_raise_for_access_query(self, mock_can_access, mock_is_owner):
+    def test_raise_for_access_query(self, mock_can_access):
         query = Mock(
             database=get_example_database(), schema="bar", sql="SELECT * FROM foo"
         )
@@ -933,7 +928,6 @@ class TestSecurityManager(SupersetTestCase):
         security_manager.raise_for_access(query=query)
 
         mock_can_access.return_value = False
-        mock_is_owner.return_value = False
 
         with self.assertRaises(SupersetSecurityException):
             security_manager.raise_for_access(query=query)
