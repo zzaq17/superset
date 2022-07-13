@@ -85,6 +85,7 @@ from superset.superset_typing import (
     QueryObjectDict,
 )
 from superset.utils import core as utils
+from superset.utils.core import get_user_id
 
 if TYPE_CHECKING:
     from superset.connectors.sqla.models import SqlMetric, TableColumn
@@ -1297,10 +1298,6 @@ class ExploreMixin:  # pylint: disable=too-many-public-methods
             for col in self.columns  # col.column_name: col for col in self.columns
         }
 
-        metrics_by_name: Dict[str, "SqlMetric"] = {
-            m.metric_name: m for m in self.metrics
-        }
-
         if not granularity and is_timeseries:
             raise QueryObjectValidationError(
                 _(
@@ -1322,8 +1319,6 @@ class ExploreMixin:  # pylint: disable=too-many-public-methods
                         template_processor=template_processor,
                     )
                 )
-            elif isinstance(metric, str) and metric in metrics_by_name:
-                metrics_exprs.append(metrics_by_name[metric].get_sqla_col())
             else:
                 raise QueryObjectValidationError(
                     _("Metric '%(metric)s' does not exist", metric=metric)
@@ -1366,9 +1361,6 @@ class ExploreMixin:  # pylint: disable=too-many-public-methods
             elif col in metrics_exprs_by_label:
                 col = metrics_exprs_by_label[col]
                 need_groupby = True
-            elif col in metrics_by_name:
-                col = metrics_by_name[col].get_sqla_col()
-                need_groupby = True
 
             if isinstance(col, ColumnElement):
                 orderby_exprs.append(col)
@@ -1402,7 +1394,7 @@ class ExploreMixin:  # pylint: disable=too-many-public-methods
                     # if groupby field equals a selected column
                     elif selected in columns_by_name:
                         if isinstance(columns_by_name[selected], dict):
-                            outer = literal_column(f"{selected}")
+                            outer = sa.column(f"{selected}")
                             outer = self.make_sqla_column_compatible(outer, selected)
                         else:
                             outer = columns_by_name[selected].get_sqla_col()
@@ -1412,7 +1404,7 @@ class ExploreMixin:  # pylint: disable=too-many-public-methods
                             self.database_id,
                             self.schema,
                         )
-                        outer = literal_column(f"({selected})")
+                        outer = sa.column(f"{selected}")
                         outer = self.make_sqla_column_compatible(outer, selected)
                 else:
                     outer = self.adhoc_column_to_sqla(
@@ -1430,7 +1422,7 @@ class ExploreMixin:  # pylint: disable=too-many-public-methods
                     self.schema,
                 )
                 if isinstance(columns_by_name[selected], dict):
-                    select_exprs.append(literal_column(f"({selected})"))
+                    select_exprs.append(sa.column(f"{selected}"))
                 else:
                     select_exprs.append(
                         columns_by_name[selected].get_sqla_col()
@@ -1720,10 +1712,6 @@ class ExploreMixin:  # pylint: disable=too-many-public-methods
                 subq = subq.group_by(*inner_groupby_exprs)
 
                 ob = inner_main_metric_expr
-                if series_limit_metric:
-                    ob = self._get_series_orderby(
-                        series_limit_metric, metrics_by_name, columns_by_name
-                    )
                 direction = sa.desc if order_desc else sa.asc
                 subq = subq.order_by(direction(ob))
                 subq = subq.limit(series_limit)
@@ -1737,18 +1725,6 @@ class ExploreMixin:  # pylint: disable=too-many-public-methods
                     on_clause.append(gby_obj == sa.column(col_name))
 
                 tbl = tbl.join(subq.alias(), and_(*on_clause))
-            else:
-                if series_limit_metric:
-                    orderby = [
-                        (
-                            self._get_series_orderby(
-                                series_limit_metric,
-                                metrics_by_name,
-                                columns_by_name,
-                            ),
-                            not order_desc,
-                        )
-                    ]
 
                 # run prequery to get top groups
                 prequery_obj = {
