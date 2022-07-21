@@ -40,11 +40,11 @@ import FilterableTable, {
 import CopyToClipboard from 'src/components/CopyToClipboard';
 import { prepareCopyToClipboardTabularData } from 'src/utils/common';
 import { CtasEnum } from 'src/SqlLab/actions/sqlLab';
+import { URL_PARAMS } from 'src/constants';
 import ExploreCtasResultsButton from '../ExploreCtasResultsButton';
 import ExploreResultsButton from '../ExploreResultsButton';
 import HighlightedSql from '../HighlightedSql';
 import QueryStateLabel from '../QueryStateLabel';
-import { URL_PARAMS } from 'src/constants';
 
 enum LIMITING_FACTOR {
   QUERY = 'QUERY',
