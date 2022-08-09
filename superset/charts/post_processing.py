@@ -26,6 +26,7 @@ In order to do that, we reproduce the post-processing in Python
 for these chart types.
 """
 
+import logging
 from io import StringIO
 from typing import Any, Dict, List, Optional, Tuple, TYPE_CHECKING
 
@@ -41,6 +42,8 @@ from superset.utils.core import (
 
 if TYPE_CHECKING:
     from superset.connectors.base.models import BaseDatasource
+
+logger = logging.getLogger(__name__)
 
 
 def get_column_key(label: Tuple[str, ...], metrics: List[str]) -> Tuple[Any, ...]:
@@ -331,6 +334,7 @@ def apply_post_process(
             # do not try to process empty data
             continue
 
+        logger.info("Running apply_post_process on QUERY: %s", query)
         if query["result_format"] == ChartDataResultFormat.JSON:
             df = pd.DataFrame.from_dict(query["data"])
         elif query["result_format"] == ChartDataResultFormat.CSV:
