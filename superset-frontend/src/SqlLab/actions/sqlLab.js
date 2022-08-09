@@ -874,9 +874,10 @@ export function saveQuery(query) {
         dispatch(queryEditorSetTitle(query, query.name));
         return savedQuery;
       })
-      .catch(() =>
-        dispatch(addDangerToast(t('Your query could not be saved'))),
-      );
+      .catch(e => {
+        console.error(e);
+        dispatch(addDangerToast(t('Your query could not be saved')));
+      });
 }
 
 export const addSavedQueryToTabState =
