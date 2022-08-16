@@ -14,11 +14,13 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
+import json
 import logging
 
 from flask import g, request, Response
 from flask_appbuilder.api import BaseApi, expose, protect, safe
 
+from superset import app
 from superset.charts.commands.exceptions import ChartNotFoundError
 from superset.constants import MODEL_API_RW_METHOD_PERMISSION_MAP, RouteMethod
 from superset.explore.commands.get import GetExploreCommand
@@ -27,8 +29,14 @@ from superset.explore.exceptions import DatasetAccessDeniedError, WrongEndpointE
 from superset.explore.permalink.exceptions import ExplorePermalinkGetFailedError
 from superset.explore.schemas import ExploreContextSchema
 from superset.extensions import event_logger
+from superset.utils import core as utils
+from superset.utils.core import get_user_id
+from superset.views.base import common_bootstrap_payload
+from superset.views.utils import bootstrap_user_data
 
 logger = logging.getLogger(__name__)
+
+config = app.config
 
 
 class SqlRestApi(BaseApi):
@@ -48,4 +56,22 @@ class SqlRestApi(BaseApi):
         log_to_statsd=True,
     )
     def get(self) -> Response:
-        return self.response(200, result={"foo": "bar"})
+        payload = {
+            "defaultDbId": config["SQLLAB_DEFAULT_DBID"],
+            "common": common_bootstrap_payload(),
+            **self._get_sqllab_tabs(get_user_id()),
+        }
+
+        form_data = request.form.get("form_data")
+        if form_data:
+            try:
+                payload["requested_query"] = json.loads(form_data)
+            except json.JSONDecodeError:
+                pass
+
+        payload["user"] = bootstrap_user_data(g.user, include_perms=True)
+        bootstrap_data = json.dumps(
+            payload, default=utils.pessimistic_json_iso_dttm_ser
+        )
+
+        return self.response(200, result=bootstrap_data)
