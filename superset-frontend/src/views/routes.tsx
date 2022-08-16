@@ -205,6 +205,10 @@ export const routes: Routes = [
     path: '/dataset/:datasetId',
     Component: DatasetPage,
   },
+  {
+    path: '/sql',
+    Component: ExplorePage, // expected component here
+  },
 ];
 
 const frontEndRoutes = routes
