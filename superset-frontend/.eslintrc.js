@@ -73,7 +73,6 @@ module.exports = {
     'file-progress',
     'theme-colors',
     'translation-vars',
-    'react-prefer-function-component',
   ],
   overrides: [
     {
@@ -98,7 +97,7 @@ module.exports = {
         '@typescript-eslint/explicit-module-boundary-types': 0, // re-enable up for discussion
         camelcase: 0,
         'class-methods-use-this': 0,
-        curly: 1,
+        curly: 2,
         'func-names': 0,
         'guard-for-in': 0,
         'import/no-cycle': 0, // re-enable up for discussion, might require some major refactors
@@ -289,4 +288,5 @@ module.exports = {
     'react/static-property-placement': 0, // disabled temporarily
     'prettier/prettier': 'error',
   },
+  ignorePatterns,
 };
