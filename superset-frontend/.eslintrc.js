@@ -93,11 +93,11 @@ module.exports = {
         '@typescript-eslint/no-empty-function': 0,
         '@typescript-eslint/no-explicit-any': 0,
         '@typescript-eslint/no-use-before-define': 1, // disabled temporarily
+        '@typescript-eslint/no-non-null-assertion': 0, // disabled temporarily
         '@typescript-eslint/explicit-function-return-type': 0,
         '@typescript-eslint/explicit-module-boundary-types': 0, // re-enable up for discussion
         camelcase: 0,
         'class-methods-use-this': 0,
-        curly: 2,
         'func-names': 0,
         'guard-for-in': 0,
         'import/no-cycle': 0, // re-enable up for discussion, might require some major refactors
@@ -221,7 +221,7 @@ module.exports = {
       },
     ],
     'class-methods-use-this': 0,
-    curly: 1,
+    curly: 2,
     'func-names': 0,
     'guard-for-in': 0,
     'import/extensions': [
