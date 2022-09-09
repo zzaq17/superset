@@ -52,7 +52,10 @@ def get_col_type(col: Dict[Any, Any]) -> str:
 
 
 def get_table_metadata(
-    database: Any, table_name: str, schema_name: Optional[str]
+    database: Any,
+    table_name: str,
+    schema_name: Optional[str],
+    get_row_count: bool = False,
 ) -> Dict[str, Any]:
     """
     Get table metadata information, including type, pk, fks.
@@ -86,6 +89,11 @@ def get_table_metadata(
                 "comment": col.get("comment"),
             }
         )
+
+    if get_row_count:
+        # compute `select count(*) from {table}`
+        pass
+
     return {
         "name": table_name,
         "columns": payload_columns,
