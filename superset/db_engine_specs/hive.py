@@ -516,12 +516,6 @@ class HiveEngineSpec(PrestoEngineSpec):
             configuration["hive.server2.proxy.user"] = username
             connect_args["configuration"] = configuration
 
-    @staticmethod
-    def execute(  # type: ignore
-        cursor, query: str, async_: bool = False
-    ):  # pylint: disable=arguments-differ
-        kwargs = {"async": async_}
-        cursor.execute(query, **kwargs)
 
     @classmethod
     @cache_manager.cache.memoize()
