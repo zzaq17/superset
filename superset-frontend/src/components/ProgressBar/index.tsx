@@ -27,7 +27,7 @@ export interface ProgressBarProps extends ProgressProps {
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const ProgressBar = styled(({ striped, ...props }: ProgressBarProps) => (
-  <AntdProgress data-test="progress-bar" {...props} />
+  <AntdProgress {...props} />
 ))`
   line-height: 0;
   position: static;

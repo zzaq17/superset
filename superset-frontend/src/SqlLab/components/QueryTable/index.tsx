@@ -245,6 +245,7 @@ const QueryTable = ({
                   showSql
                   user={user}
                   query={query}
+                  actions={actions}
                   height={400}
                   displayLimit={displayLimit}
                   defaultQueryLimit={1000}

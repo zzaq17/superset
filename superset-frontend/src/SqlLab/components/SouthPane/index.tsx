@@ -164,8 +164,10 @@ export default function SouthPane({
       if (Date.now() - latestQuery.startDttm <= LOCALSTORAGE_MAX_QUERY_AGE_MS) {
         results = (
           <ResultSet
+            showControls
             search
             query={latestQuery}
+            actions={actions}
             user={user}
             height={innerTabContentHeight + EXTRA_HEIGHT_RESULTS}
             database={databases[latestQuery.dbId]}
@@ -197,6 +199,7 @@ export default function SouthPane({
           query={query}
           visualize={false}
           csv={false}
+          actions={actions}
           cache
           user={user}
           height={innerTabContentHeight}

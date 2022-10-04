@@ -17,19 +17,19 @@
  * under the License.
  */
 import React from 'react';
-import { useSelector, useDispatch } from 'react-redux';
-import { t, JsonObject } from '@superset-ui/core';
-import {
-  createCtasDatasource,
-  addInfoToast,
-  addDangerToast,
-} from 'src/SqlLab/actions/sqlLab';
+import { useSelector } from 'react-redux';
+import { t } from '@superset-ui/core';
 import { InfoTooltipWithTrigger } from '@superset-ui/chart-controls';
 import Button from 'src/components/Button';
 import { exploreChart } from 'src/explore/exploreUtils';
 import { SqlLabRootState } from 'src/SqlLab/types';
 
 interface ExploreCtasResultsButtonProps {
+  actions: {
+    createCtasDatasource: Function;
+    addInfoToast: Function;
+    addDangerToast: Function;
+  };
   table: string;
   schema?: string | null;
   dbId: number;
@@ -37,15 +37,16 @@ interface ExploreCtasResultsButtonProps {
 }
 
 const ExploreCtasResultsButton = ({
+  actions,
   table,
   schema,
   dbId,
   templateParams,
 }: ExploreCtasResultsButtonProps) => {
+  const { createCtasDatasource, addInfoToast, addDangerToast } = actions;
   const errorMessage = useSelector(
     (state: SqlLabRootState) => state.sqlLab.errorMessage,
   );
-  const dispatch = useDispatch<(dispatch: any) => Promise<JsonObject>>();
 
   const buildVizOptions = {
     datasourceName: table,
@@ -55,7 +56,7 @@ const ExploreCtasResultsButton = ({
   };
 
   const visualize = () => {
-    dispatch(createCtasDatasource(buildVizOptions))
+    createCtasDatasource(buildVizOptions)
       .then((data: { table_id: number }) => {
         const formData = {
           datasource: `${data.table_id}__table`,
@@ -66,14 +67,12 @@ const ExploreCtasResultsButton = ({
           all_columns: [],
           row_limit: 1000,
         };
-        dispatch(
-          addInfoToast(t('Creating a data source and creating a new tab')),
-        );
+        addInfoToast(t('Creating a data source and creating a new tab'));
         // open new window for data visualization
         exploreChart(formData);
       })
       .catch(() => {
-        dispatch(addDangerToast(errorMessage || t('An error occurred')));
+        addDangerToast(errorMessage || t('An error occurred'));
       });
   };
 
