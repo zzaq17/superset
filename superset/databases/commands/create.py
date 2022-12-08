@@ -81,7 +81,7 @@ class CreateDatabaseCommand(BaseCommand):
                         **ssh_tunnel_properties,
                         "database_id": database.id,
                     },
-                    commit=False,
+                    commit=True,
                 )
 
             # adding a new database we always want to force refresh schema list
@@ -91,7 +91,6 @@ class CreateDatabaseCommand(BaseCommand):
                     "schema_access", security_manager.get_schema_perm(database, schema)
                 )
 
-            db.session.add(ssh_tunnel)
             db.session.commit()
         except DAOCreateFailedError as ex:
             db.session.rollback()
