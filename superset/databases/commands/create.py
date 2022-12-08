@@ -73,7 +73,12 @@ class CreateDatabaseCommand(BaseCommand):
             database.set_sqlalchemy_uri(database.sqlalchemy_uri)
 
             ssh_tunnel = None
-            logger.info("grabbing schemas: %d", self._properties.get("ssh_tunnel"))
+            import json
+
+            logger.info(
+                "grabbing schemas: %d",
+                json.dumps(self._properties.get("ssh_tunnel", {})),
+            )
             if ssh_tunnel_properties := self._properties.get("ssh_tunnel"):
                 ssh_tunnel = SSHTunnelDAO.create(
                     {
