@@ -75,10 +75,6 @@ class CreateDatabaseCommand(BaseCommand):
             ssh_tunnel = None
             import json
 
-            logger.info(
-                "grabbing schemas: %d",
-                json.dumps(self._properties.get("ssh_tunnel", {})),
-            )
             if ssh_tunnel_properties := self._properties.get("ssh_tunnel"):
                 ssh_tunnel = SSHTunnelDAO.create(
                     {
@@ -95,6 +91,7 @@ class CreateDatabaseCommand(BaseCommand):
                     "schema_access", security_manager.get_schema_perm(database, schema)
                 )
 
+            db.session.add(ssh_tunnel)
             db.session.commit()
         except DAOCreateFailedError as ex:
             db.session.rollback()

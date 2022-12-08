@@ -379,16 +379,16 @@ class Database(
             DatabaseDAO,
         )
 
-        logger.info("override_tunnel %s", str(override_ssh_tunnel))
+        logger.info("[ssh] override_tunnel %s", str(override_ssh_tunnel))
 
         tunnel = DatabaseDAO.get_ssh_tunnel(database_id=self.id)
-        logger.info("look up tunnel %s", str(tunnel))
+        logger.info("[ssh] look up tunnel %s", str(tunnel))
 
         if ssh_tunnel := override_ssh_tunnel or DatabaseDAO.get_ssh_tunnel(
             database_id=self.id
         ):
             # if ssh_tunnel is available build engine with information
-            logger.info("esablishing ssh tunnel connection")
+            logger.info("[ssh] establishing ssh tunnel connection")
             url = make_url_safe(self.sqlalchemy_uri_decrypted)
             ssh_params = ssh_tunnel.parameters(bind_host=url.host, bind_port=url.port)
             engine_context = sshtunnel.open_tunnel(**ssh_params)
