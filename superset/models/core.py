@@ -379,7 +379,11 @@ class Database(
             DatabaseDAO,
         )
 
-        logger.info("Testing %s", str(override_ssh_tunnel))
+        logger.info("override_tunnel %s", str(override_ssh_tunnel))
+        logger.info("lookup %d", DatabaseDAO.get_ssh_tunnel(
+            database_id=self.id
+        ))
+        
         if ssh_tunnel := override_ssh_tunnel or DatabaseDAO.get_ssh_tunnel(
             database_id=self.id
         ):

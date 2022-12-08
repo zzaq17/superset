@@ -92,6 +92,7 @@ class TestConnectionDatabaseCommand(BaseCommand):
             database.db_engine_spec.mutate_db_for_connection_test(database)
 
             # Generate tunnel if present in the properties
+            logger.info("testing connection: %d", self._properties.get("ssh_tunnel"))
             if ssh_tunnel := self._properties.get("ssh_tunnel"):
                 ssh_tunnel = SSHTunnel(**ssh_tunnel)
 
