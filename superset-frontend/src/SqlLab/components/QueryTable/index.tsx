@@ -21,39 +21,43 @@ import moment from 'moment';
 import Card from 'src/components/Card';
 import ProgressBar from 'src/components/ProgressBar';
 import Label from 'src/components/Label';
-import { t, useTheme } from '@superset-ui/core';
-import { useSelector } from 'react-redux';
+import { t, useTheme, QueryResponse } from '@superset-ui/core';
+import { useDispatch, useSelector } from 'react-redux';
+
+import {
+  queryEditorSetAndSaveSql,
+  cloneQueryToNewTab,
+  fetchQueryResults,
+  clearQueryResults,
+  removeQuery,
+} from 'src/SqlLab/actions/sqlLab';
 import TableView from 'src/components/TableView';
 import Button from 'src/components/Button';
-import { fDuration } from 'src/modules/dates';
+import { fDuration } from 'src/utils/dates';
 import Icons from 'src/components/Icons';
 import { Tooltip } from 'src/components/Tooltip';
-import { Query, RootState } from 'src/SqlLab/types';
+import { SqlLabRootState } from 'src/SqlLab/types';
 import ModalTrigger from 'src/components/ModalTrigger';
 import { UserWithPermissionsAndRoles as User } from 'src/types/bootstrapTypes';
 import ResultSet from '../ResultSet';
 import HighlightedSql from '../HighlightedSql';
 import { StaticPosition, verticalAlign, StyledTooltip } from './styles';
 
-interface QueryTableQuery extends Omit<Query, 'state' | 'sql' | 'progress'> {
+interface QueryTableQuery
+  extends Omit<QueryResponse, 'state' | 'sql' | 'progress' | 'results'> {
   state?: Record<string, any>;
   sql?: Record<string, any>;
   progress?: Record<string, any>;
+  results?: Record<string, any>;
 }
 
 interface QueryTableProps {
   columns?: string[];
-  actions: {
-    queryEditorSetSql: Function;
-    cloneQueryToNewTab: Function;
-    fetchQueryResults: Function;
-    clearQueryResults: Function;
-    removeQuery: Function;
-  };
-  queries?: Query[];
+  queries?: QueryResponse[];
   onUserClicked?: Function;
   onDbClicked?: Function;
   displayLimit: number;
+  latestQueryId?: string | undefined;
 }
 
 const openQuery = (id: number) => {
@@ -63,13 +67,14 @@ const openQuery = (id: number) => {
 
 const QueryTable = ({
   columns = ['started', 'duration', 'rows'],
-  actions,
   queries = [],
   onUserClicked = () => undefined,
   onDbClicked = () => undefined,
   displayLimit,
+  latestQueryId,
 }: QueryTableProps) => {
   const theme = useTheme();
+  const dispatch = useDispatch();
 
   const setHeaders = (column: string) => {
     if (column === 'sql') {
@@ -87,27 +92,19 @@ const QueryTable = ({
     [columns],
   );
 
-  const user = useSelector<RootState, User>(state => state.sqlLab.user);
-
-  const {
-    queryEditorSetSql,
-    cloneQueryToNewTab,
-    fetchQueryResults,
-    clearQueryResults,
-    removeQuery,
-  } = actions;
+  const user = useSelector<SqlLabRootState, User>(state => state.sqlLab.user);
 
   const data = useMemo(() => {
-    const restoreSql = (query: Query) => {
-      queryEditorSetSql({ id: query.sqlEditorId }, query.sql);
+    const restoreSql = (query: QueryResponse) => {
+      dispatch(queryEditorSetAndSaveSql({ id: query.sqlEditorId }, query.sql));
     };
 
-    const openQueryInNewTab = (query: Query) => {
-      cloneQueryToNewTab(query, true);
+    const openQueryInNewTab = (query: QueryResponse) => {
+      dispatch(cloneQueryToNewTab(query, true));
     };
 
-    const openAsyncResults = (query: Query, displayLimit: number) => {
-      fetchQueryResults(query, displayLimit);
+    const openAsyncResults = (query: QueryResponse, displayLimit: number) => {
+      dispatch(fetchQueryResults(query, displayLimit));
     };
 
     const statusAttributes = {
@@ -225,23 +222,22 @@ const QueryTable = ({
           </Card>
         );
         if (q.resultsKey) {
-          q.output = (
+          q.results = (
             <ModalTrigger
               className="ResultsModal"
               triggerNode={
                 <Label type="info" className="pointer">
-                  {t('View results')}
+                  {t('View')}
                 </Label>
               }
               modalTitle={t('Data preview')}
               beforeOpen={() => openAsyncResults(query, displayLimit)}
-              onExit={() => clearQueryResults(query)}
+              onExit={() => dispatch(clearQueryResults(query))}
               modalBody={
                 <ResultSet
                   showSql
                   user={user}
                   query={query}
-                  actions={actions}
                   height={400}
                   displayLimit={displayLimit}
                   defaultQueryLimit={1000}
@@ -251,12 +247,9 @@ const QueryTable = ({
             />
           );
         } else {
-          // if query was run using ctas and force_ctas_schema was set
-          // tempTable will have the schema
-          const schemaUsed =
-            q.ctas && q.tempTable && q.tempTable.includes('.') ? '' : q.schema;
-          q.output = [schemaUsed, q.tempTable].filter(v => v).join('.');
+          q.results = <></>;
         }
+
         q.progress =
           state === 'success' ? (
             <ProgressBar
@@ -281,39 +274,29 @@ const QueryTable = ({
               )}
               placement="top"
             >
-              <Icons.Edit iconSize="s" />
+              <Icons.Edit iconSize="xl" />
             </StyledTooltip>
             <StyledTooltip
               onClick={() => openQueryInNewTab(query)}
               tooltip={t('Run query in a new tab')}
               placement="top"
             >
-              <Icons.PlusCircleOutlined iconSize="xs" css={verticalAlign} />
+              <Icons.PlusCircleOutlined iconSize="xl" css={verticalAlign} />
             </StyledTooltip>
-            <StyledTooltip
-              tooltip={t('Remove query from log')}
-              onClick={() => removeQuery(query)}
-            >
-              <Icons.Trash iconSize="xs" />
-            </StyledTooltip>
+            {q.id !== latestQueryId && (
+              <StyledTooltip
+                tooltip={t('Remove query from log')}
+                onClick={() => dispatch(removeQuery(query))}
+              >
+                <Icons.Trash iconSize="xl" />
+              </StyledTooltip>
+            )}
           </div>
         );
         return q;
       })
       .reverse();
-  }, [
-    queries,
-    onUserClicked,
-    onDbClicked,
-    user,
-    displayLimit,
-    actions,
-    clearQueryResults,
-    cloneQueryToNewTab,
-    fetchQueryResults,
-    queryEditorSetSql,
-    removeQuery,
-  ]);
+  }, [queries, onUserClicked, onDbClicked, user, displayLimit]);
 
   return (
     <div className="QueryTable">

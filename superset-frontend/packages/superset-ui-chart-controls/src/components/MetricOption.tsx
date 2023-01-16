@@ -29,6 +29,7 @@ import { ColumnTypeLabel } from './ColumnTypeLabel/ColumnTypeLabel';
 import CertifiedIconWithTooltip from './CertifiedIconWithTooltip';
 import Tooltip from './Tooltip';
 import { getMetricTooltipNode } from './labelUtils';
+import { SQLPopover } from './SQLPopover';
 
 const FlexRowContainer = styled.div`
   align-items: center;
@@ -46,6 +47,7 @@ export interface MetricOptionProps {
   showType?: boolean;
   url?: string;
   labelRef?: React.RefObject<any>;
+  shouldShowTooltip?: boolean;
 }
 
 export function MetricOption({
@@ -54,6 +56,7 @@ export function MetricOption({
   openInNewWindow = false,
   showFormula = true,
   showType = false,
+  shouldShowTooltip = true,
   url = '',
 }: MetricOptionProps) {
   const verbose = metric.verbose_name || metric.metric_name || metric.label;
@@ -63,6 +66,20 @@ export function MetricOption({
     </a>
   ) : (
     verbose
+  );
+
+  const label = (
+    <span
+      className="option-label metric-option-label"
+      css={(theme: SupersetTheme) =>
+        css`
+          margin-right: ${theme.gridUnit}px;
+        `
+      }
+      ref={labelRef}
+    >
+      {link}
+    </span>
   );
 
   const warningMarkdown = metric.warning_markdown || metric.warning_text;
@@ -76,26 +93,15 @@ export function MetricOption({
   return (
     <FlexRowContainer className="metric-option">
       {showType && <ColumnTypeLabel type="expression" />}
-      <Tooltip id="metric-name-tooltip" title={tooltipText}>
-        <span
-          className="option-label metric-option-label"
-          css={(theme: SupersetTheme) =>
-            css`
-              margin-right: ${theme.gridUnit}px;
-            `
-          }
-          ref={labelRef}
-        >
-          {link}
-        </span>
-      </Tooltip>
-      {showFormula && (
-        <InfoTooltipWithTrigger
-          className="text-muted m-r-5"
-          icon="question-circle-o"
-          tooltip={metric.expression}
-          label={`expr-${metric.metric_name}`}
-        />
+      {shouldShowTooltip ? (
+        <Tooltip id="metric-name-tooltip" title={tooltipText}>
+          {label}
+        </Tooltip>
+      ) : (
+        label
+      )}
+      {showFormula && metric.expression && (
+        <SQLPopover sqlExpression={metric.expression} />
       )}
       {metric.is_certified && (
         <CertifiedIconWithTooltip

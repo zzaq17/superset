@@ -18,27 +18,29 @@
  */
 import {
   buildQueryContext,
-  DTTM_ALIAS,
   ensureIsArray,
-  QueryFormData,
   normalizeOrderBy,
   PostProcessingPivot,
+  QueryFormData,
+  getXAxisColumn,
+  isXAxisSet,
 } from '@superset-ui/core';
 import {
   rollingWindowOperator,
   timeCompareOperator,
-  isValidTimeCompare,
+  isTimeComparison,
   pivotOperator,
   resampleOperator,
+  renameOperator,
   contributionOperator,
   prophetOperator,
   timeComparePivotOperator,
   flattenOperator,
+  sortOperator,
 } from '@superset-ui/chart-controls';
 
 export default function buildQuery(formData: QueryFormData) {
-  const { x_axis, groupby } = formData;
-  const is_timeseries = x_axis === DTTM_ALIAS || !x_axis;
+  const { groupby } = formData;
   return buildQueryContext(formData, baseQueryObject => {
     /* the `pivotOperatorInRuntime` determines how to pivot the dataframe returned from the raw query.
        1. If it's a time compared query, there will return a pivoted dataframe that append time compared metrics. for instance:
@@ -60,26 +62,27 @@ export default function buildQuery(formData: QueryFormData) {
           2015-03-01      318.0         0.0
 
      */
-    const pivotOperatorInRuntime: PostProcessingPivot = isValidTimeCompare(
+    const pivotOperatorInRuntime: PostProcessingPivot = isTimeComparison(
       formData,
       baseQueryObject,
     )
       ? timeComparePivotOperator(formData, baseQueryObject)
-      : pivotOperator(formData, {
-          ...baseQueryObject,
-          index: x_axis,
-          is_timeseries,
-        });
+      : pivotOperator(formData, baseQueryObject);
 
     return [
       {
         ...baseQueryObject,
-        columns: [...ensureIsArray(x_axis), ...ensureIsArray(groupby)],
+        columns: [
+          ...(isXAxisSet(formData)
+            ? ensureIsArray(getXAxisColumn(formData))
+            : []),
+          ...ensureIsArray(groupby),
+        ],
         series_columns: groupby,
-        is_timeseries,
+        ...(isXAxisSet(formData) ? {} : { is_timeseries: true }),
         // todo: move `normalizeOrderBy to extractQueryFields`
         orderby: normalizeOrderBy(baseQueryObject).orderby,
-        time_offsets: isValidTimeCompare(formData, baseQueryObject)
+        time_offsets: isTimeComparison(formData, baseQueryObject)
           ? formData.time_compare
           : [],
         /* Note that:
@@ -91,8 +94,11 @@ export default function buildQuery(formData: QueryFormData) {
           rollingWindowOperator(formData, baseQueryObject),
           timeCompareOperator(formData, baseQueryObject),
           resampleOperator(formData, baseQueryObject),
-          flattenOperator(formData, baseQueryObject),
+          renameOperator(formData, baseQueryObject),
           contributionOperator(formData, baseQueryObject),
+          sortOperator(formData, baseQueryObject),
+          flattenOperator(formData, baseQueryObject),
+          // todo: move prophet before flatten
           prophetOperator(formData, baseQueryObject),
         ],
       },

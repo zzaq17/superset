@@ -17,7 +17,13 @@
  * under the License.
  */
 import React, { useCallback, useEffect, useState } from 'react';
-import { makeApi, styled, SupersetApiError, t } from '@superset-ui/core';
+import {
+  makeApi,
+  styled,
+  SupersetApiError,
+  t,
+  getExtensionsRegistry,
+} from '@superset-ui/core';
 import { InfoTooltipWithTrigger } from '@superset-ui/chart-controls';
 import Modal from 'src/components/Modal';
 import Loading from 'src/components/Loading';
@@ -26,6 +32,8 @@ import { Input } from 'src/components/Input';
 import { useToasts } from 'src/components/MessageToasts/withToasts';
 import { FormItem } from 'src/components/Form';
 import { EmbeddedDashboard } from '../types';
+
+const extensionsRegistry = getExtensionsRegistry();
 
 type Props = {
   dashboardId: string;
@@ -140,34 +148,46 @@ export const DashboardEmbedControls = ({ dashboardId, onHide }: Props) => {
     return <Loading />;
   }
 
+  const DocsConfigDetails = extensionsRegistry.get(
+    'embedded.documentation.configuration_details',
+  );
+  const docsDescription = extensionsRegistry.get(
+    'embedded.documentation.description',
+  );
+  const docsUrl =
+    extensionsRegistry.get('embedded.documentation.url') ??
+    'https://www.npmjs.com/package/@superset-ui/embedded-sdk';
+
   return (
     <>
-      <p>
-        {embedded ? (
-          <>
+      {embedded ? (
+        DocsConfigDetails ? (
+          <DocsConfigDetails embeddedId={embedded.uuid} />
+        ) : (
+          <p>
             {t(
               'This dashboard is ready to embed. In your application, pass the following id to the SDK:',
             )}
             <br />
             <code>{embedded.uuid}</code>
-          </>
-        ) : (
-          t(
+          </p>
+        )
+      ) : (
+        <p>
+          {t(
             'Configure this dashboard to embed it into an external web application.',
-          )
-        )}
-      </p>
+          )}
+        </p>
+      )}
       <p>
         {t('For further instructions, consult the')}{' '}
-        <a
-          href="https://www.npmjs.com/package/@superset-ui/embedded-sdk"
-          target="_blank"
-          rel="noreferrer"
-        >
-          {t('Superset Embedded SDK documentation.')}
+        <a href={docsUrl} target="_blank" rel="noreferrer">
+          {docsDescription
+            ? docsDescription()
+            : t('Superset Embedded SDK documentation.')}
         </a>
       </p>
-      <h3>Settings</h3>
+      <h3>{t('Settings')}</h3>
       <FormItem>
         <label htmlFor="allowed-domains">
           {t('Allowed Domains (comma separated)')}{' '}

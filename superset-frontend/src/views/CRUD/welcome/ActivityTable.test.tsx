@@ -25,6 +25,7 @@ import fetchMock from 'fetch-mock';
 import thunk from 'redux-thunk';
 import configureStore from 'redux-mock-store';
 import ActivityTable from 'src/views/CRUD/welcome/ActivityTable';
+import { TableTab } from 'src/views/CRUD/types';
 
 const mockStore = configureStore([thunk]);
 const store = mockStore({});
@@ -33,7 +34,7 @@ const chartsEndpoint = 'glob:*/api/v1/chart/?*';
 const dashboardsEndpoint = 'glob:*/api/v1/dashboard/?*';
 
 const mockData = {
-  Viewed: [
+  [TableTab.Viewed]: [
     {
       slice_name: 'ChartyChart',
       changed_on_utc: '24 Feb 2014 10:13:14',
@@ -42,7 +43,7 @@ const mockData = {
       table: {},
     },
   ],
-  Created: [
+  [TableTab.Created]: [
     {
       dashboard_title: 'Dashboard_Test',
       changed_on_utc: '24 Feb 2014 10:13:14',
@@ -77,11 +78,11 @@ fetchMock.get(dashboardsEndpoint, {
 
 describe('ActivityTable', () => {
   const activityProps = {
-    activeChild: 'Created',
+    activeChild: TableTab.Created,
     activityData: mockData,
     setActiveChild: jest.fn(),
     user: { userId: '1' },
-    loadedCount: 3,
+    isFetchingActivityData: false,
   };
 
   let wrapper: ReactWrapper;
@@ -100,14 +101,14 @@ describe('ActivityTable', () => {
     expect(wrapper.find(ActivityTable)).toExist();
   });
   it('renders tabs with three buttons', () => {
-    expect(wrapper.find('li.no-router')).toHaveLength(3);
+    expect(wrapper.find('[role="tab"]')).toHaveLength(3);
   });
   it('renders ActivityCards', async () => {
     expect(wrapper.find('ListViewCard')).toExist();
   });
   it('calls the getEdited batch call when edited tab is clicked', async () => {
     act(() => {
-      const handler = wrapper.find('li.no-router a').at(1).prop('onClick');
+      const handler = wrapper.find('[role="tab"] a').at(1).prop('onClick');
       if (handler) {
         handler({} as any);
       }
@@ -122,11 +123,11 @@ describe('ActivityTable', () => {
   });
   it('show empty state if there is no data', () => {
     const activityProps = {
-      activeChild: 'Created',
+      activeChild: TableTab.Created,
       activityData: {},
       setActiveChild: jest.fn(),
       user: { userId: '1' },
-      loadedCount: 3,
+      isFetchingActivityData: false,
     };
     const wrapper = mount(
       <Provider store={store}>

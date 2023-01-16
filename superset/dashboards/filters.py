@@ -29,7 +29,8 @@ from superset.models.dashboard import Dashboard
 from superset.models.embedded_dashboard import EmbeddedDashboard
 from superset.models.slice import Slice
 from superset.security.guest_token import GuestTokenResourceType, GuestUser
-from superset.views.base import BaseFilter, is_user_admin
+from superset.utils.core import get_user_id
+from superset.views.base import BaseFilter
 from superset.views.base_api import BaseFavoriteFilter
 
 
@@ -45,6 +46,21 @@ class DashboardTitleOrSlugFilter(BaseFilter):  # pylint: disable=too-few-public-
             or_(
                 Dashboard.dashboard_title.ilike(ilike_value),
                 Dashboard.slug.ilike(ilike_value),
+            )
+        )
+
+
+class DashboardCreatedByMeFilter(BaseFilter):  # pylint: disable=too-few-public-methods
+    name = _("Created by me")
+    arg_name = "dashboard_created_by_me"
+
+    def apply(self, query: Query, value: Any) -> Query:
+        return query.filter(
+            or_(
+                Dashboard.created_by_fk  # pylint: disable=comparison-with-callable
+                == get_user_id(),
+                Dashboard.changed_by_fk  # pylint: disable=comparison-with-callable
+                == get_user_id(),
             )
         )
 
@@ -82,7 +98,7 @@ class DashboardAccessFilter(BaseFilter):  # pylint: disable=too-few-public-metho
     """
 
     def apply(self, query: Query, value: Any) -> Query:
-        if is_user_admin():
+        if security_manager.is_admin():
             return query
 
         datasource_perms = security_manager.user_view_menu_names("datasource_access")
@@ -95,7 +111,7 @@ class DashboardAccessFilter(BaseFilter):  # pylint: disable=too-few-public-metho
 
         datasource_perm_query = (
             db.session.query(Dashboard.id)
-            .join(Dashboard.slices)
+            .join(Dashboard.slices, isouter=True)
             .filter(
                 and_(
                     Dashboard.published.is_(True),
@@ -111,17 +127,14 @@ class DashboardAccessFilter(BaseFilter):  # pylint: disable=too-few-public-metho
 
         users_favorite_dash_query = db.session.query(FavStar.obj_id).filter(
             and_(
-                FavStar.user_id == security_manager.user_model.get_user_id(),
+                FavStar.user_id == get_user_id(),
                 FavStar.class_name == "Dashboard",
             )
         )
         owner_ids_query = (
             db.session.query(Dashboard.id)
             .join(Dashboard.owners)
-            .filter(
-                security_manager.user_model.id
-                == security_manager.user_model.get_user_id()
-            )
+            .filter(security_manager.user_model.id == get_user_id())
         )
 
         feature_flagged_filters = []
@@ -143,7 +156,6 @@ class DashboardAccessFilter(BaseFilter):  # pylint: disable=too-few-public-metho
         if is_feature_enabled("EMBEDDED_SUPERSET") and security_manager.is_guest_user(
             g.user
         ):
-
             guest_user: GuestUser = g.user
             embedded_dashboard_ids = [
                 r["id"]
@@ -209,12 +221,30 @@ class DashboardCertifiedFilter(BaseFilter):  # pylint: disable=too-few-public-me
             return query.filter(
                 and_(
                     Dashboard.certified_by.isnot(None),
+                    Dashboard.certified_by != "",
                 )
             )
         if value is False:
             return query.filter(
-                and_(
+                or_(
                     Dashboard.certified_by.is_(None),
+                    Dashboard.certified_by == "",
                 )
             )
+        return query
+
+
+class DashboardHasCreatedByFilter(BaseFilter):  # pylint: disable=too-few-public-methods
+    """
+    Custom filter for the GET list that filters all dashboards created by user
+    """
+
+    name = _("Has created by")
+    arg_name = "dashboard_has_created_by"
+
+    def apply(self, query: Query, value: Any) -> Query:
+        if value is True:
+            return query.filter(and_(Dashboard.created_by_fk.isnot(None)))
+        if value is False:
+            return query.filter(and_(Dashboard.created_by_fk.is_(None)))
         return query

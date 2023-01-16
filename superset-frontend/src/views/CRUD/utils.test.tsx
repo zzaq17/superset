@@ -18,13 +18,17 @@
  */
 import rison from 'rison';
 import {
-  isNeedsPassword,
-  isAlreadyExists,
-  getPasswordsNeeded,
-  getAlreadyExists,
-  hasTerminalValidation,
   checkUploadExtensions,
+  getAlreadyExists,
+  getFilterValues,
+  getPasswordsNeeded,
+  hasTerminalValidation,
+  isAlreadyExists,
+  isNeedsPassword,
 } from 'src/views/CRUD/utils';
+import { User } from 'src/types/bootstrapTypes';
+import { Filter, TableTab } from './types';
+import { WelcomeTable } from './welcome/types';
 
 const terminalErrors = {
   errors: [
@@ -34,6 +38,25 @@ const terminalErrors = {
       level: 'warning',
       extra: {
         'metadata.yaml': { type: ['Must be equal to Database.'] },
+        issue_codes: [
+          {
+            code: 1010,
+            message:
+              'Issue 1010 - Superset encountered an error while running a command.',
+          },
+        ],
+      },
+    },
+  ],
+};
+
+const terminalErrorsWithOnlyIssuesCode = {
+  errors: [
+    {
+      message: 'Error importing database',
+      error_type: 'GENERIC_COMMAND_ERROR',
+      level: 'warning',
+      extra: {
         issue_codes: [
           {
             code: 1010,
@@ -146,6 +169,12 @@ test('detects if the error message is terminal or if it requires uses interventi
   expect(isTerminal).toBe(false);
 });
 
+test('error message is terminal when the "extra" field contains only the "issue_codes" key', () => {
+  expect(hasTerminalValidation(terminalErrorsWithOnlyIssuesCode.errors)).toBe(
+    true,
+  );
+});
+
 test('does not ask for password when the import type is wrong', () => {
   const error = {
     errors: [
@@ -188,7 +217,7 @@ test('successfully modified rison to encode correctly', () => {
   });
 });
 
-test('checkUploadExtenssions should return valid upload extensions', () => {
+test('checkUploadExtensions should return valid upload extensions', () => {
   const uploadExtensionTest = ['a', 'b', 'c'];
   const randomExtension = ['a', 'c'];
   const randomExtensionTwo = ['c'];
@@ -202,4 +231,166 @@ test('checkUploadExtenssions should return valid upload extensions', () => {
   expect(
     checkUploadExtensions(randomExtensionThree, uploadExtensionTest),
   ).toBeFalsy();
+});
+
+test('getFilterValues', () => {
+  const userId = 1234;
+  const mockUser: User = {
+    firstName: 'foo',
+    lastName: 'bar',
+    username: 'baz',
+    userId,
+    isActive: true,
+    isAnonymous: false,
+  };
+  const testCases: [
+    TableTab,
+    WelcomeTable,
+    User | undefined,
+    Filter[] | undefined,
+    ReturnType<typeof getFilterValues>,
+  ][] = [
+    [
+      TableTab.Mine,
+      WelcomeTable.SavedQueries,
+      mockUser,
+      undefined,
+      [
+        {
+          id: 'created_by',
+          operator: 'rel_o_m',
+          value: `${userId}`,
+        },
+      ],
+    ],
+    [
+      TableTab.Favorite,
+      WelcomeTable.SavedQueries,
+      mockUser,
+      undefined,
+      [
+        {
+          id: 'id',
+          operator: 'saved_query_is_fav',
+          value: true,
+        },
+      ],
+    ],
+    [
+      TableTab.Created,
+      WelcomeTable.Charts,
+      mockUser,
+      undefined,
+      [
+        {
+          id: 'created_by',
+          operator: 'rel_o_m',
+          value: `${userId}`,
+        },
+      ],
+    ],
+    [
+      TableTab.Created,
+      WelcomeTable.Dashboards,
+      mockUser,
+      undefined,
+      [
+        {
+          id: 'created_by',
+          operator: 'rel_o_m',
+          value: `${userId}`,
+        },
+      ],
+    ],
+    [
+      TableTab.Created,
+      WelcomeTable.Recents,
+      mockUser,
+      undefined,
+      [
+        {
+          id: 'created_by',
+          operator: 'rel_o_m',
+          value: `${userId}`,
+        },
+      ],
+    ],
+    [
+      TableTab.Mine,
+      WelcomeTable.Charts,
+      mockUser,
+      undefined,
+      [
+        {
+          id: 'owners',
+          operator: 'rel_m_m',
+          value: `${userId}`,
+        },
+      ],
+    ],
+    [
+      TableTab.Mine,
+      WelcomeTable.Dashboards,
+      mockUser,
+      undefined,
+      [
+        {
+          id: 'owners',
+          operator: 'rel_m_m',
+          value: `${userId}`,
+        },
+      ],
+    ],
+    [
+      TableTab.Favorite,
+      WelcomeTable.Dashboards,
+      mockUser,
+      undefined,
+      [
+        {
+          id: 'id',
+          operator: 'dashboard_is_favorite',
+          value: true,
+        },
+      ],
+    ],
+    [
+      TableTab.Favorite,
+      WelcomeTable.Charts,
+      mockUser,
+      undefined,
+      [
+        {
+          id: 'id',
+          operator: 'chart_is_favorite',
+          value: true,
+        },
+      ],
+    ],
+    [
+      TableTab.Other,
+      WelcomeTable.Charts,
+      mockUser,
+      [
+        {
+          col: 'created_by',
+          opr: 'rel_o_m',
+          value: 0,
+        },
+      ],
+      [
+        {
+          id: 'created_by',
+          operator: 'rel_o_m',
+          value: 0,
+        },
+      ],
+    ],
+  ];
+  testCases.forEach(testCase => {
+    const [tab, welcomeTable, user, otherTabFilters, expectedValue] = testCase;
+    expect(getFilterValues(tab, welcomeTable, user, otherTabFilters)).toEqual(
+      expectedValue,
+    );
+  });
 });

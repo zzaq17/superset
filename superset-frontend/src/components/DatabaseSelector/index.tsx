@@ -19,11 +19,15 @@
 import React, { ReactNode, useState, useMemo, useEffect } from 'react';
 import { styled, SupersetClient, t } from '@superset-ui/core';
 import rison from 'rison';
-import { Select } from 'src/components';
+import { AsyncSelect, Select } from 'src/components';
 import Label from 'src/components/Label';
 import { FormLabel } from 'src/components/Form';
 import RefreshLabel from 'src/components/RefreshLabel';
 import { useToasts } from 'src/components/MessageToasts/withToasts';
+import {
+  getClientErrorMessage,
+  getClientErrorObject,
+} from 'src/utils/getClientErrorObject';
 
 const DatabaseSelectorWrapper = styled.div`
   ${({ theme }) => `
@@ -74,25 +78,25 @@ type DatabaseValue = {
   id: number;
   database_name: string;
   backend: string;
-  allow_multi_schema_metadata_fetch: boolean;
 };
 
 export type DatabaseObject = {
   id: number;
   database_name: string;
   backend: string;
-  allow_multi_schema_metadata_fetch: boolean;
 };
 
 type SchemaValue = { label: string; value: string };
 
-interface DatabaseSelectorProps {
-  db?: DatabaseObject;
+export interface DatabaseSelectorProps {
+  db?: DatabaseObject | null;
+  emptyState?: ReactNode;
   formMode?: boolean;
-  getDbList?: (arg0: any) => {};
+  getDbList?: (arg0: any) => void;
   handleError: (msg: string) => void;
   isDatabaseSelectEnabled?: boolean;
   onDbChange?: (db: DatabaseObject) => void;
+  onEmptyResults?: (searchText?: string) => void;
   onSchemaChange?: (schema?: string) => void;
   onSchemasLoad?: (schemas: Array<object>) => void;
   readOnly?: boolean;
@@ -118,10 +122,12 @@ const SelectLabel = ({
 export default function DatabaseSelector({
   db,
   formMode = false,
+  emptyState,
   getDbList,
   handleError,
   isDatabaseSelectEnabled = true,
   onDbChange,
+  onEmptyResults,
   onSchemaChange,
   onSchemasLoad,
   readOnly = false,
@@ -130,22 +136,13 @@ export default function DatabaseSelector({
 }: DatabaseSelectorProps) {
   const [loadingSchemas, setLoadingSchemas] = useState(false);
   const [schemaOptions, setSchemaOptions] = useState<SchemaValue[]>([]);
-  const [currentDb, setCurrentDb] = useState<DatabaseValue | undefined>(
-    db
-      ? {
-          label: (
-            <SelectLabel backend={db.backend} databaseName={db.database_name} />
-          ),
-          value: db.id,
-          ...db,
-        }
-      : undefined,
-  );
+  const [currentDb, setCurrentDb] = useState<DatabaseValue | undefined>();
   const [currentSchema, setCurrentSchema] = useState<SchemaValue | undefined>(
     schema ? { label: schema, value: schema } : undefined,
   );
   const [refresh, setRefresh] = useState(0);
   const { addSuccessToast } = useToasts();
+
   const loadDatabases = useMemo(
     () =>
       async (
@@ -181,7 +178,7 @@ export default function DatabaseSelector({
             getDbList(result);
           }
           if (result.length === 0) {
-            handleError(t("It seems you don't have access to any database"));
+            if (onEmptyResults) onEmptyResults(search);
           }
           const options = result.map((row: DatabaseObject) => ({
             label: (
@@ -194,17 +191,42 @@ export default function DatabaseSelector({
             id: row.id,
             database_name: row.database_name,
             backend: row.backend,
-            allow_multi_schema_metadata_fetch:
-              row.allow_multi_schema_metadata_fetch,
           }));
+
           return {
             data: options,
             totalCount: options.length,
           };
         });
       },
-    [formMode, getDbList, handleError, sqlLabMode],
+    [formMode, getDbList, sqlLabMode],
   );
+
+  useEffect(() => {
+    setCurrentDb(current =>
+      current?.id !== db?.id
+        ? db
+          ? {
+              label: (
+                <SelectLabel
+                  backend={db.backend}
+                  databaseName={db.database_name}
+                />
+              ),
+              value: db.id,
+              ...db,
+            }
+          : undefined
+        : current,
+    );
+  }, [db]);
+
+  function changeSchema(schema: SchemaValue) {
+    setCurrentSchema(schema);
+    if (onSchemaChange) {
+      onSchemaChange(schema.value);
+    }
+  }
 
   useEffect(() => {
     if (currentDb) {
@@ -225,11 +247,19 @@ export default function DatabaseSelector({
           }
           setSchemaOptions(options);
           setLoadingSchemas(false);
+          if (options.length === 1) changeSchema(options[0]);
           if (refresh > 0) addSuccessToast('List refreshed');
         })
-        .catch(() => {
+        .catch(err => {
           setLoadingSchemas(false);
-          handleError(t('There was an error loading the schemas'));
+          getClientErrorObject(err).then(clientError => {
+            handleError(
+              getClientErrorMessage(
+                t('There was an error loading the schemas'),
+                clientError,
+              ),
+            );
+          });
         });
     }
   }, [currentDb, onSchemasLoad, refresh]);
@@ -248,13 +278,6 @@ export default function DatabaseSelector({
     }
   }
 
-  function changeSchema(schema: SchemaValue) {
-    setCurrentSchema(schema);
-    if (onSchemaChange) {
-      onSchemaChange(schema.value);
-    }
-  }
-
   function renderSelectRow(select: ReactNode, refreshBtn: ReactNode) {
     return (
       <div className="section">
@@ -266,12 +289,13 @@ export default function DatabaseSelector({
 
   function renderDatabaseSelect() {
     return renderSelectRow(
-      <Select
+      <AsyncSelect
         ariaLabel={t('Select database or type database name')}
         optionFilterProps={['database_name', 'value']}
         data-test="select-database"
         header={<FormLabel>{t('Database')}</FormLabel>}
         lazyLoading={false}
+        notFoundContent={emptyState}
         onChange={changeDataBase}
         value={currentDb}
         placeholder={t('Select database or type database name')}
@@ -283,20 +307,18 @@ export default function DatabaseSelector({
   }
 
   function renderSchemaSelect() {
-    const refreshIcon = !formMode && !readOnly && (
+    const refreshIcon = !readOnly && (
       <RefreshLabel
         onClick={() => setRefresh(refresh + 1)}
         tooltipContent={t('Force refresh schema list')}
       />
     );
-
     return renderSelectRow(
       <Select
         ariaLabel={t('Select schema or type schema name')}
-        disabled={readOnly}
+        disabled={!currentDb || readOnly}
         header={<FormLabel>{t('Schema')}</FormLabel>}
         labelInValue
-        lazyLoading={false}
         loading={loadingSchemas}
         name="select-schema"
         placeholder={t('Select schema or type schema name')}

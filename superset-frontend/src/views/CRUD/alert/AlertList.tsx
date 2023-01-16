@@ -17,12 +17,17 @@
  * under the License.
  */
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useHistory } from 'react-router-dom';
-import { t, SupersetClient, makeApi, styled } from '@superset-ui/core';
+import {
+  t,
+  SupersetClient,
+  makeApi,
+  styled,
+  getExtensionsRegistry,
+} from '@superset-ui/core';
 import moment from 'moment';
 import ActionsBar, { ActionProps } from 'src/components/ListView/ActionsBar';
-import Button from 'src/components/Button';
 import FacePile from 'src/components/FacePile';
 import { Tooltip } from 'src/components/Tooltip';
 import ListView, {
@@ -45,8 +50,12 @@ import {
   useSingleViewResource,
 } from 'src/views/CRUD/hooks';
 import { createErrorHandler, createFetchRelated } from 'src/views/CRUD/utils';
+import { isUserAdmin } from 'src/dashboard/util/permissionUtils';
+import Owner from 'src/types/Owner';
 import AlertReportModal from './AlertReportModal';
 import { AlertObject, AlertState } from './types';
+
+const extensionsRegistry = getExtensionsRegistry();
 
 const PAGE_SIZE = 25;
 
@@ -81,6 +90,18 @@ const RefreshContainer = styled.div`
   background-color: ${({ theme }) => theme.colors.grayscale.light5};
 `;
 
+const StyledHeaderWithIcon = styled.div`
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  > *:first-child {
+    margin-right: ${({ theme }) => theme.gridUnit}px;
+  }
+`;
+
+const HeaderExtension = extensionsRegistry.get('alertsreports.header.icon');
+
 function AlertList({
   addDangerToast,
   isReportEnabled = false,
@@ -90,7 +111,7 @@ function AlertList({
   const title = isReportEnabled ? t('report') : t('alert');
   const titlePlural = isReportEnabled ? t('reports') : t('alerts');
   const pathName = isReportEnabled ? 'Reports' : 'Alerts';
-  const initalFilters = useMemo(
+  const initialFilters = useMemo(
     () => [
       {
         id: 'type',
@@ -110,6 +131,7 @@ function AlertList({
     },
     hasPerm,
     fetchData,
+    setResourceCollection,
     refreshData,
     toggleBulkSelect,
   } = useListViewResource<AlertObject>(
@@ -118,7 +140,7 @@ function AlertList({
     addDangerToast,
     true,
     undefined,
-    initalFilters,
+    initialFilters,
   );
 
   const { updateResource } = useSingleViewResource<Partial<AlertObject>>(
@@ -189,14 +211,32 @@ function AlertList({
 
   const initialSort = [{ id: 'name', desc: true }];
 
-  const toggleActive = (data: AlertObject, checked: boolean) => {
-    if (data && data.id) {
-      const update_id = data.id;
-      updateResource(update_id, { active: checked }).then(() => {
-        refreshData();
-      });
-    }
-  };
+  const toggleActive = useCallback(
+    (data: AlertObject, checked: boolean) => {
+      if (data?.id) {
+        const update_id = data.id;
+        const original = [...alerts];
+
+        setResourceCollection(
+          original.map(alert => {
+            if (alert?.id === data.id) {
+              return {
+                ...alert,
+                active: checked,
+              };
+            }
+
+            return alert;
+          }),
+        );
+
+        updateResource(update_id, { active: checked }, false, false)
+          .then()
+          .catch(() => setResourceCollection(original));
+      }
+    },
+    [alerts, setResourceCollection, updateResource],
+  );
 
   const columns = useMemo(
     () => [
@@ -239,11 +279,14 @@ function AlertList({
         size: 'xl',
         Cell: ({
           row: {
-            original: { crontab_humanized = '' },
+            original: { crontab_humanized = '', timezone },
           },
         }: any) => (
-          <Tooltip title={crontab_humanized} placement="topLeft">
-            <span>{crontab_humanized}</span>
+          <Tooltip
+            title={`${crontab_humanized} (${timezone})`}
+            placement="topLeft"
+          >
+            <span>{`${crontab_humanized} (${timezone})`}</span>
           </Tooltip>
         ),
       },
@@ -262,9 +305,15 @@ function AlertList({
         size: 'xl',
       },
       {
-        accessor: 'created_by',
+        Cell: ({
+          row: {
+            original: { created_by },
+          },
+        }: any) =>
+          created_by ? `${created_by.first_name} ${created_by.last_name}` : '',
+        Header: t('Created by'),
+        id: 'created_by',
         disableSortBy: true,
-        hidden: true,
         size: 'xl',
       },
       {
@@ -279,14 +328,31 @@ function AlertList({
         size: 'xl',
       },
       {
-        Cell: ({ row: { original } }: any) => (
-          <Switch
-            data-test="toggle-active"
-            checked={original.active}
-            onClick={(checked: boolean) => toggleActive(original, checked)}
-            size="small"
-          />
-        ),
+        Cell: ({
+          row: {
+            original: { changed_on_delta_humanized: changedOn },
+          },
+        }: any) => <span className="no-wrap">{changedOn}</span>,
+        Header: t('Modified'),
+        accessor: 'changed_on_delta_humanized',
+        size: 'xl',
+      },
+      {
+        Cell: ({ row: { original } }: any) => {
+          const allowEdit =
+            original.owners.map((o: Owner) => o.id).includes(user.userId) ||
+            isUserAdmin(user);
+
+          return (
+            <Switch
+              disabled={!allowEdit}
+              data-test="toggle-active"
+              checked={original.active}
+              onClick={(checked: boolean) => toggleActive(original, checked)}
+              size="small"
+            />
+          );
+        },
         Header: t('Active'),
         accessor: 'active',
         id: 'active',
@@ -300,6 +366,10 @@ function AlertList({
           const handleGotoExecutionLog = () =>
             history.push(`/${original.type.toLowerCase()}/${original.id}/log`);
 
+          const allowEdit =
+            original.owners.map((o: Owner) => o.id).includes(user.userId) ||
+            isUserAdmin(user);
+
           const actions = [
             canEdit
               ? {
@@ -312,14 +382,14 @@ function AlertList({
               : null,
             canEdit
               ? {
-                  label: 'edit-action',
-                  tooltip: t('Edit'),
+                  label: allowEdit ? 'edit-action' : 'preview-action',
+                  tooltip: allowEdit ? t('Edit') : t('View'),
                   placement: 'bottom',
-                  icon: 'Edit',
+                  icon: allowEdit ? 'Edit' : 'Binoculars',
                   onClick: handleEdit,
                 }
               : null,
-            canDelete
+            allowEdit && canDelete
               ? {
                   label: 'delete-action',
                   tooltip: t('Delete'),
@@ -339,7 +409,7 @@ function AlertList({
         size: 'xl',
       },
     ],
-    [canDelete, canEdit, isReportEnabled],
+    [canDelete, canEdit, isReportEnabled, toggleActive],
   );
 
   const subMenuButtons: SubMenuProps['buttons'] = [];
@@ -366,21 +436,39 @@ function AlertList({
     });
   }
 
-  const EmptyStateButton = (
-    <Button buttonStyle="primary" onClick={() => handleAlertEdit(null)}>
-      <i className="fa fa-plus" /> {title}
-    </Button>
-  );
-
   const emptyState = {
-    message: t('No %s yet', titlePlural),
-    slot: canCreate ? EmptyStateButton : null,
+    title: t('No %s yet', titlePlural),
+    image: 'filter-results.svg',
+    buttonAction: () => handleAlertEdit(null),
+    buttonText: canCreate ? (
+      <>
+        <i className="fa fa-plus" /> {title}{' '}
+      </>
+    ) : null,
   };
 
   const filters: Filters = useMemo(
     () => [
       {
+        Header: t('Owner'),
+        key: 'owner',
+        id: 'owners',
+        input: 'select',
+        operator: FilterOperator.relationManyMany,
+        unfilteredLabel: 'All',
+        fetchSelects: createFetchRelated(
+          'report',
+          'owners',
+          createErrorHandler(errMsg =>
+            t('An error occurred while fetching owners values: %s', errMsg),
+          ),
+          user,
+        ),
+        paginate: true,
+      },
+      {
         Header: t('Created by'),
+        key: 'created_by',
         id: 'created_by',
         input: 'select',
         operator: FilterOperator.relationOneMany,
@@ -397,6 +485,7 @@ function AlertList({
       },
       {
         Header: t('Status'),
+        key: 'status',
         id: 'last_state',
         input: 'select',
         operator: FilterOperator.equals,
@@ -417,6 +506,7 @@ function AlertList({
       },
       {
         Header: t('Search'),
+        key: 'search',
         id: 'name',
         input: 'search',
         operator: FilterOperator.contains,
@@ -425,11 +515,20 @@ function AlertList({
     [],
   );
 
+  const header = HeaderExtension ? (
+    <StyledHeaderWithIcon>
+      <div>{t('Alerts & reports')}</div>
+      <HeaderExtension />
+    </StyledHeaderWithIcon>
+  ) : (
+    t('Alerts & reports')
+  );
+
   return (
     <>
       <SubMenu
         activeChild={pathName}
-        name={t('Alerts & reports')}
+        name={header}
         tabs={[
           {
             name: 'Alerts',

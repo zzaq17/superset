@@ -62,6 +62,11 @@ describe('ChartTable', () => {
     user: {
       userId: '2',
     },
+    mine: [],
+    otherTabData: [],
+    otherTabFilters: [],
+    otherTabTitle: 'Other',
+    showThumbnails: false,
   };
 
   let wrapper: ReactWrapper;
@@ -79,7 +84,7 @@ describe('ChartTable', () => {
 
   it('fetches chart favorites and renders chart cards', async () => {
     act(() => {
-      const handler = wrapper.find('li.no-router a').at(0).prop('onClick');
+      const handler = wrapper.find('[role="tab"] a').at(0).prop('onClick');
       if (handler) {
         handler({} as any);
       }
@@ -89,13 +94,35 @@ describe('ChartTable', () => {
     expect(wrapper.find('ChartCard')).toExist();
   });
 
+  it('renders other tab by default', async () => {
+    await act(async () => {
+      wrapper = mount(
+        <ChartTable
+          user={{ userId: '2' }}
+          mine={[]}
+          otherTabData={mockCharts}
+          otherTabFilters={[]}
+          otherTabTitle="Other"
+          showThumbnails={false}
+          store={store}
+        />,
+      );
+    });
+    await waitForComponentToPaint(wrapper);
+    expect(wrapper.find('EmptyState')).not.toExist();
+    expect(wrapper.find('ChartCard')).toExist();
+  });
+
   it('display EmptyState if there is no data', async () => {
     await act(async () => {
       wrapper = mount(
         <ChartTable
-          chartFilter="Mine"
           user={{ userId: '2' }}
           mine={[]}
+          otherTabData={[]}
+          otherTabFilters={[]}
+          otherTabTitle="Other"
+          showThumbnails={false}
           store={store}
         />,
       );

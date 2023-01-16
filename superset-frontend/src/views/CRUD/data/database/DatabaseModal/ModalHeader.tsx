@@ -19,6 +19,8 @@
 
 import React from 'react';
 import { getDatabaseDocumentationLinks } from 'src/views/CRUD/hooks';
+import { UploadFile } from 'antd/lib/upload/interface';
+import { t } from '@superset-ui/core';
 import {
   EditHeaderTitle,
   EditHeaderSubtitle,
@@ -52,6 +54,7 @@ const documentationLink = (engine: string | undefined) => {
   }
   return irregularDocumentationLinks[engine];
 };
+
 const ModalHeader = ({
   isLoading,
   isEditMode,
@@ -61,6 +64,7 @@ const ModalHeader = ({
   dbName,
   dbModel,
   editNewDb,
+  fileList,
 }: {
   isLoading: boolean;
   isEditMode: boolean;
@@ -70,91 +74,129 @@ const ModalHeader = ({
   dbName: string;
   dbModel: DatabaseForm;
   editNewDb?: boolean;
+  fileList?: UploadFile[];
+  passwordFields?: string[];
+  needsOverwriteConfirm?: boolean;
 }) => {
+  const fileCheck = fileList && fileList?.length > 0;
+
   const isEditHeader = (
     <StyledFormHeader>
       <EditHeaderTitle>{db?.backend}</EditHeaderTitle>
       <EditHeaderSubtitle>{dbName}</EditHeaderSubtitle>
     </StyledFormHeader>
   );
+
   const useSqlAlchemyFormHeader = (
     <StyledFormHeader>
-      <p className="helper-top"> STEP 2 OF 2 </p>
-      <h4>Enter Primary Credentials</h4>
+      <p className="helper-top">
+        {t('STEP %(stepCurr)s OF %(stepLast)s', {
+          stepCurr: 2,
+          stepLast: 2,
+        })}
+      </p>
+      <h4>{t('Enter Primary Credentials')}</h4>
       <p className="helper-bottom">
-        Need help? Learn how to connect your database{' '}
+        {t('Need help? Learn how to connect your database')}{' '}
         <a
           href={supersetTextDocs?.default || DOCUMENTATION_LINK}
           target="_blank"
           rel="noopener noreferrer"
         >
-          here
+          {t('here')}
         </a>
         .
       </p>
     </StyledFormHeader>
   );
+
   const hasConnectedDbHeader = (
     <StyledStickyHeader>
       <StyledFormHeader>
-        <p className="helper-top"> STEP 3 OF 3 </p>
-        <h4 className="step-3-text">
-          Your database was successfully connected! Here are some optional
-          settings for your database
-        </h4>
-        <p className="helper-bottom">
-          Need help? Learn more about{' '}
-          <a
-            href={documentationLink(db?.engine)}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            connecting to {dbModel.name}.
-          </a>
+        <p className="helper-top">
+          {t('STEP %(stepCurr)s OF %(stepLast)s', {
+            stepCurr: 3,
+            stepLast: 3,
+          })}
+        </p>
+        <h4 className="step-3-text">{t('Database connected')}</h4>
+        <p className="subheader-text">
+          {t(`Create a dataset to begin visualizing your data as a chart or go to
+          SQL Lab to query your data.`)}
         </p>
       </StyledFormHeader>
     </StyledStickyHeader>
   );
+
   const hasDbHeader = (
     <StyledStickyHeader>
       <StyledFormHeader>
-        <p className="helper-top"> STEP 2 OF 3 </p>
-        <h4>Enter the required {dbModel.name} credentials</h4>
+        <p className="helper-top">
+          {t('STEP %(stepCurr)s OF %(stepLast)s', {
+            stepCurr: 2,
+            stepLast: 3,
+          })}
+        </p>
+        <h4>
+          {t('Enter the required %(dbModelName)s credentials', {
+            dbModelName: dbModel.name,
+          })}
+        </h4>
         <p className="helper-bottom">
-          Need help? Learn more about{' '}
+          {t('Need help? Learn more about')}{' '}
           <a
             href={documentationLink(db?.engine)}
             target="_blank"
             rel="noopener noreferrer"
           >
-            connecting to {dbModel.name}.
+            {t('connecting to %(dbModelName)s.', { dbModelName: dbModel.name })}
+            .
           </a>
         </p>
       </StyledFormHeader>
     </StyledStickyHeader>
   );
+
   const noDbHeader = (
     <StyledFormHeader>
       <div className="select-db">
-        <p className="helper-top"> STEP 1 OF 3 </p>
-        <h4>Select a database to connect</h4>
+        <p className="helper-top">
+          {t('STEP %(stepCurr)s OF %(stepLast)s', {
+            stepCurr: 1,
+            stepLast: 3,
+          })}
+        </p>
+        <h4>{t('Select a database to connect')}</h4>
       </div>
     </StyledFormHeader>
   );
 
+  const importDbHeader = (
+    <StyledStickyHeader>
+      <StyledFormHeader>
+        <p className="helper-top">
+          {t('STEP %(stepCurr)s OF %(stepLast)s', {
+            stepCurr: 2,
+            stepLast: 2,
+          })}
+        </p>
+        <h4>
+          {t('Enter the required %(dbModelName)s credentials', {
+            dbModelName: dbModel.name,
+          })}
+        </h4>
+        <p className="helper-bottom">{fileCheck ? fileList[0].name : ''}</p>
+      </StyledFormHeader>
+    </StyledStickyHeader>
+  );
+
+  if (fileCheck) return importDbHeader;
   if (isLoading) return <></>;
-  if (isEditMode) {
-    return isEditHeader;
-  }
-  if (useSqlAlchemyForm) {
-    return useSqlAlchemyFormHeader;
-  }
-  if (hasConnectedDb && !editNewDb) {
-    return hasConnectedDbHeader;
-  }
-  if (db || editNewDb) {
-    return hasDbHeader;
-  }
+  if (isEditMode) return isEditHeader;
+  if (useSqlAlchemyForm) return useSqlAlchemyFormHeader;
+  if (hasConnectedDb && !editNewDb) return hasConnectedDbHeader;
+  if (db || editNewDb) return hasDbHeader;
+
   return noDbHeader;
 };
 

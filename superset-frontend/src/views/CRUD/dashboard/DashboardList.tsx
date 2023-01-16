@@ -17,7 +17,7 @@
  * under the License.
  */
 import { styled, SupersetClient, t } from '@superset-ui/core';
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import rison from 'rison';
 import { isFeatureEnabled, FeatureFlag } from 'src/featureFlags';
@@ -49,6 +49,7 @@ import ImportModelsModal from 'src/components/ImportModal/index';
 
 import Dashboard from 'src/dashboard/containers/Dashboard';
 import CertifiedBadge from 'src/components/CertifiedBadge';
+import getBootstrapData from 'src/utils/getBootstrapData';
 import DashboardCard from './DashboardCard';
 import { DashboardStatus } from './types';
 
@@ -94,8 +95,14 @@ const Actions = styled.div`
   color: ${({ theme }) => theme.colors.grayscale.base};
 `;
 
+const bootstrapData = getBootstrapData();
+
 function DashboardList(props: DashboardListProps) {
-  const { addDangerToast, addSuccessToast } = props;
+  const {
+    addDangerToast,
+    addSuccessToast,
+    user: { userId },
+  } = props;
 
   const {
     state: {
@@ -128,6 +135,8 @@ function DashboardList(props: DashboardListProps) {
   const [importingDashboard, showImportModal] = useState<boolean>(false);
   const [passwordFields, setPasswordFields] = useState<string[]>([]);
   const [preparingExport, setPreparingExport] = useState<boolean>(false);
+  const enableBroadUserAccess =
+    bootstrapData?.common?.conf?.ENABLE_BROAD_ACTIVITY_ACCESS;
 
   const openDashboardImportModal = () => {
     showImportModal(true);
@@ -143,14 +152,14 @@ function DashboardList(props: DashboardListProps) {
     addSuccessToast(t('Dashboard imported'));
   };
 
-  const { userId } = props.user;
   // TODO: Fix usage of localStorage keying on the user id
   const userKey = dangerouslyGetItemDoNotUse(userId?.toString(), null);
 
   const canCreate = hasPerm('can_write');
   const canEdit = hasPerm('can_write');
   const canDelete = hasPerm('can_write');
-  const canExport = hasPerm('can_export');
+  const canExport =
+    hasPerm('can_export') && isFeatureEnabled(FeatureFlag.VERSIONED_EXPORT);
 
   const initialSort = [{ id: 'changed_on_delta_humanized', desc: true }];
 
@@ -177,6 +186,7 @@ function DashboardList(props: DashboardListProps) {
                 url = '',
                 certified_by = '',
                 certification_details = '',
+                owners,
               } = json.result;
               return {
                 ...dashboard,
@@ -190,6 +200,7 @@ function DashboardList(props: DashboardListProps) {
                 url,
                 certified_by,
                 certification_details,
+                owners,
               };
             }
             return dashboard;
@@ -232,27 +243,25 @@ function DashboardList(props: DashboardListProps) {
 
   const columns = useMemo(
     () => [
-      ...(props.user.userId
-        ? [
-            {
-              Cell: ({
-                row: {
-                  original: { id },
-                },
-              }: any) => (
-                <FaveStar
-                  itemId={id}
-                  saveFaveStar={saveFavoriteStatus}
-                  isStarred={favoriteStatus[id]}
-                />
-              ),
-              Header: '',
-              id: 'id',
-              disableSortBy: true,
-              size: 'xs',
-            },
-          ]
-        : []),
+      {
+        Cell: ({
+          row: {
+            original: { id },
+          },
+        }: any) =>
+          userId && (
+            <FaveStar
+              itemId={id}
+              saveFaveStar={saveFavoriteStatus}
+              isStarred={favoriteStatus[id]}
+            />
+          ),
+        Header: '',
+        id: 'id',
+        disableSortBy: true,
+        size: 'xs',
+        hidden: !userId,
+      },
       {
         Cell: ({
           row: {
@@ -288,7 +297,12 @@ function DashboardList(props: DashboardListProps) {
               changed_by_url: changedByUrl,
             },
           },
-        }: any) => <a href={changedByUrl}>{changedByName}</a>,
+        }: any) =>
+          enableBroadUserAccess ? (
+            <a href={changedByUrl}>{changedByName}</a>
+          ) : (
+            <>{changedByName}</>
+          ),
         Header: t('Modified by'),
         accessor: 'changed_by.first_name',
         size: 'xl',
@@ -422,16 +436,22 @@ function DashboardList(props: DashboardListProps) {
       },
     ],
     [
+      userId,
       canEdit,
       canDelete,
       canExport,
-      ...(props.user.userId ? [favoriteStatus] : []),
+      saveFavoriteStatus,
+      favoriteStatus,
+      refreshData,
+      addSuccessToast,
+      addDangerToast,
     ],
   );
 
   const favoritesFilter: Filter = useMemo(
     () => ({
       Header: t('Favorite'),
+      key: 'favorite',
       id: 'id',
       urlDisplay: 'favorite',
       input: 'select',
@@ -448,7 +468,15 @@ function DashboardList(props: DashboardListProps) {
   const filters: Filters = useMemo(
     () => [
       {
+        Header: t('Search'),
+        key: 'search',
+        id: 'dashboard_title',
+        input: 'search',
+        operator: FilterOperator.titleOrSlug,
+      },
+      {
         Header: t('Owner'),
+        key: 'owner',
         id: 'owners',
         input: 'select',
         operator: FilterOperator.relationManyMany,
@@ -470,6 +498,7 @@ function DashboardList(props: DashboardListProps) {
       },
       {
         Header: t('Created by'),
+        key: 'created_by',
         id: 'created_by',
         input: 'select',
         operator: FilterOperator.relationOneMany,
@@ -491,6 +520,7 @@ function DashboardList(props: DashboardListProps) {
       },
       {
         Header: t('Status'),
+        key: 'published',
         id: 'published',
         input: 'select',
         operator: FilterOperator.equals,
@@ -500,9 +530,10 @@ function DashboardList(props: DashboardListProps) {
           { label: t('Draft'), value: false },
         ],
       },
-      ...(props.user.userId ? [favoritesFilter] : []),
+      ...(userId ? [favoritesFilter] : []),
       {
         Header: t('Certified'),
+        key: 'certified',
         id: 'id',
         urlDisplay: 'certified',
         input: 'select',
@@ -512,12 +543,6 @@ function DashboardList(props: DashboardListProps) {
           { label: t('Yes'), value: true },
           { label: t('No'), value: false },
         ],
-      },
-      {
-        Header: t('Search'),
-        id: 'dashboard_title',
-        input: 'search',
-        operator: FilterOperator.titleOrSlug,
       },
     ],
     [addDangerToast, favoritesFilter, props.user],
@@ -544,8 +569,8 @@ function DashboardList(props: DashboardListProps) {
     },
   ];
 
-  function renderCard(dashboard: Dashboard) {
-    return (
+  const renderCard = useCallback(
+    (dashboard: Dashboard) => (
       <DashboardCard
         dashboard={dashboard}
         hasPerm={hasPerm}
@@ -556,6 +581,7 @@ function DashboardList(props: DashboardListProps) {
             ? userKey.thumbnails
             : isFeatureEnabled(FeatureFlag.THUMBNAILS)
         }
+        userId={userId}
         loading={loading}
         addDangerToast={addDangerToast}
         addSuccessToast={addSuccessToast}
@@ -564,8 +590,20 @@ function DashboardList(props: DashboardListProps) {
         favoriteStatus={favoriteStatus[dashboard.id]}
         handleBulkDashboardExport={handleBulkDashboardExport}
       />
-    );
-  }
+    ),
+    [
+      addDangerToast,
+      addSuccessToast,
+      bulkSelectEnabled,
+      favoriteStatus,
+      hasPerm,
+      loading,
+      userId,
+      refreshData,
+      saveFavoriteStatus,
+      userKey,
+    ],
+  );
 
   const subMenuButtons: SubMenuProps['buttons'] = [];
   if (canDelete || canExport) {
