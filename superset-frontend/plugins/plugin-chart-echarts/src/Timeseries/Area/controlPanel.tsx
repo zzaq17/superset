@@ -99,7 +99,22 @@ const config: ControlPanelConfig = {
             },
           },
         ],
-        [showValueControl],
+        [
+          {
+            name: 'show_extra_controls',
+            config: {
+              type: 'CheckboxControl',
+              label: t('Enable Stacking Controls'),
+              renderTrigger: true,
+              default: false,
+              description: t(
+                'Enables controls to allow users to select ' +
+                  'their preferred method for stacking or ' +
+                  'unstacking series within the chart.',
+              ),
+            },
+          },
+        ],
         [
           {
             name: 'stack',
@@ -113,23 +128,8 @@ const config: ControlPanelConfig = {
             },
           },
         ],
+        [showValueControl],
         [onlyTotalControl],
-        [
-          {
-            name: 'show_extra_controls',
-            config: {
-              type: 'CheckboxControl',
-              label: t('Extra Controls'),
-              renderTrigger: true,
-              default: false,
-              description: t(
-                'Whether to show extra controls or not. Extra controls ' +
-                  'include things like making mulitBar charts stacked ' +
-                  'or side by side.',
-              ),
-            },
-          },
-        ],
         [
           {
             name: 'markerEnabled',
