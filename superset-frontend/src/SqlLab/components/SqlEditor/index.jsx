@@ -31,8 +31,8 @@ import Mousetrap from 'mousetrap';
 import Button from 'src/components/Button';
 import Timer from 'src/components/Timer';
 import ResizableSidebar from 'src/components/ResizableSidebar';
-import { AntdDropdown, AntdSwitch } from 'src/components';
-import { Input } from 'src/components/Input';
+import { AntdDropdown, AntdSwitch, Result } from 'src/components';
+import { Input, TextArea } from 'src/components/Input';
 import { Menu } from 'src/components/Menu';
 import Icons from 'src/components/Icons';
 import { detectOS } from 'src/utils/common';
@@ -86,6 +86,7 @@ import SqlEditorLeftBar from '../SqlEditorLeftBar';
 import AceEditorWrapper from '../AceEditorWrapper';
 import RunQueryActionButton from '../RunQueryActionButton';
 import QueryLimitSelect from '../QueryLimitSelect';
+import { SupersetClient } from '@superset-ui/core';
 
 const bootstrapData = getBootstrapData();
 const validatorMap =
@@ -222,9 +223,12 @@ const SqlEditor = ({
         database: databases[dbId],
         latestQuery: queries[latestQueryId],
         hideLeftBar,
+        tables,
       };
     },
   );
+
+  console.log('tables', tables);
 
   const [height, setHeight] = useState(0);
   const [autorun, setAutorun] = useState(queryEditor.autorun);
@@ -640,6 +644,112 @@ const SqlEditor = ({
     );
   };
 
+  // NLP implementation
+  const [editorType, setEditorType] = useState('sql');
+  const [NLPQuery, setNLPQuery] = useState('');
+  const [NLPResult, setNLPResult] = useState('');
+  const [NLPLoading, setNLPLoading] = useState(false);
+  const handleNLPGeneration = async () => {
+    setNLPLoading(true);
+    let tablesContext = "# Given the following table/s definition\n\n";
+    for(let t = 0; t < tables.length; t += 1) {
+      const table = tables[t];
+      if (table?.columns?.length) {
+        tablesContext += `# Table ${table.name}, columns = [`;
+        for(let c = 0; c < table.columns.length; c += 1) {
+          const col = table.columns[c];
+          tablesContext += col.name;
+          tablesContext += table.columns.at(-1)?.name === col.name ? "]" : ", "
+        }
+        tablesContext += `\n\n`;
+      }
+    }
+    tablesContext += `# Create one valid SQL SELECT statement with the following constraints\n`;
+    tablesContext += `# For example: SELECT column FROM table;\n`;
+    tablesContext += `# Do NOT generate more tha one SELECT statement\n`;
+    tablesContext += `# Do NOT generate any text other than one valid SELECT statement\n`;
+    tablesContext += `# Do ONLY use SELECT\n`;
+    tablesContext += `# Respond with a SQL statement to select ${NLPQuery} from the given tables ->`;
+    const postPayload = {
+      prompt: tablesContext,
+    }
+    SupersetClient.post({
+      endpoint: "api/v1/sqllab/nlp",
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(postPayload),
+      parseMethod: 'json-bigint',
+    })
+      .then(({ json }) => {
+        setNLPResult(json.result);
+        setEditorType('sql')
+        setNLPLoading(false);
+      })
+      .catch(() => {
+        setNLPLoading(false);
+      });
+
+    console.log(tablesContext);
+  }
+  const renderNLPMenu = (
+    <Menu
+      mode="horizontal"
+      defaultSelectedKeys={[editorType]}
+      css={css`
+        margin-bottom: 20px;
+      `}
+    >
+      <Menu.Item
+        disabled={NLPLoading}
+        key="sql"
+        icon={<Icons.ConsoleSqlOutlined />}
+        onClick={({ key }) => setEditorType(key)}
+      >
+        SQL
+      </Menu.Item>
+      <Menu.Item
+        disabled={NLPLoading}
+        key="nlp"
+        icon={<Icons.ExperimentOutlined />}
+        onClick={({ key }) => setEditorType(key)}
+      >
+        Natural language
+      </Menu.Item>
+    </Menu>
+  );
+
+  const renderNLPBottomBar = (
+    tables.length > 0 ? <Button
+      type="primary"
+      size="large"
+      onClick={handleNLPGeneration}
+      css={css`
+        margin-top: 20px;
+        margin-bottom: 20px;
+        padding: 20px;
+        width: 250px;
+      `}
+    >
+      {!NLPLoading ? <Icons.ExperimentOutlined /> : <Icons.LoadingOutlined />}{' '}
+      Generate query
+    </Button> : null
+  );
+
+  const renderNLPForm =
+    tables.length > 0 ? (
+      <TextArea
+        disabled={NLPLoading}
+        rows={6}
+        onChange={e => setNLPQuery(e.target.value)}
+        placeholder="Get all fruits from the tree..."
+      />
+    ) : (
+      <Result
+        status="warning"
+        title={<small>Please select one or more tables</small>}
+        subTitle="Select one or more tables on the left pane for the AI algorithm to gain context about your query"
+      />
+    );
+
   const queryPane = () => {
     const hotkeys = getHotkeyConfig();
     const { aceEditorHeight, southPaneHeight } =
@@ -657,17 +767,22 @@ const SqlEditor = ({
         onDragEnd={onResizeEnd}
       >
         <div ref={northPaneRef} className="north-pane">
-          <AceEditorWrapper
-            autocomplete={autocompleteEnabled}
-            onBlur={setQueryEditorAndSaveSql}
-            onChange={onSqlChanged}
-            queryEditorId={queryEditor.id}
-            database={database}
-            extendedTables={tables}
-            height={`${aceEditorHeight}px`}
-            hotkeys={hotkeys}
-          />
-          {renderEditorBottomBar(hotkeys)}
+          {renderNLPMenu}
+          {editorType === 'sql' && (
+            <AceEditorWrapper
+              autocomplete={autocompleteEnabled}
+              onBlur={setQueryEditorAndSaveSql}
+              onChange={onSqlChanged}
+              queryEditorId={queryEditor.id}
+              database={database}
+              extendedTables={tables}
+              height={`${aceEditorHeight}px`}
+              hotkeys={hotkeys}
+              initialSql={NLPResult}
+            />
+          )}
+          {editorType === 'nlp' && renderNLPForm}
+          {editorType === 'sql' ? renderEditorBottomBar(hotkeys) : renderNLPBottomBar}
         </div>
         <SouthPane
           queryEditorId={queryEditor.id}

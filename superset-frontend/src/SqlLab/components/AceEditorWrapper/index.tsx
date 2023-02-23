@@ -57,6 +57,7 @@ type AceEditorWrapperProps = {
   extendedTables?: Array<{ name: string; columns: any[] }>;
   height: string;
   hotkeys: HotKey[];
+  initialSql?: string;
 };
 
 const StyledAceEditor = styled(AceEditor)`
@@ -90,6 +91,7 @@ const AceEditorWrapper = ({
   extendedTables = [],
   height,
   hotkeys,
+  initialSql,
 }: AceEditorWrapperProps) => {
   const dispatch = useDispatch();
 
@@ -103,7 +105,7 @@ const AceEditorWrapper = ({
     'validationResult',
     'schema',
   ]);
-  const currentSql = queryEditor.sql ?? '';
+  const currentSql = initialSql || queryEditor.sql || '';
   const functionNames = queryEditor.functionNames ?? [];
   const schemas = queryEditor.schemaOptions ?? [];
   const tables = queryEditor.tableOptions ?? [];

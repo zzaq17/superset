@@ -41,6 +41,7 @@ from superset.sqllab.execution_context_convertor import ExecutionContextConverto
 from superset.sqllab.query_render import SqlQueryRenderImpl
 from superset.sqllab.schemas import (
     ExecutePayloadSchema,
+    NLPPayloadSchema,
     QueryExecutionResponseSchema,
     sql_lab_get_results_schema,
 )
@@ -55,6 +56,7 @@ from superset.superset_typing import FlaskResponse
 from superset.utils import core as utils
 from superset.views.base import json_success
 from superset.views.base_api import BaseSupersetApi, requires_json, statsd_metrics
+import openai
 
 config = app.config
 logger = logging.getLogger(__name__)
@@ -75,9 +77,68 @@ class SqlLabRestApi(BaseSupersetApi):
     }
     openapi_spec_tag = "SQL Lab"
     openapi_spec_component_schemas = (
+        NLPPayloadSchema,
         ExecutePayloadSchema,
         QueryExecutionResponseSchema,
     )
+
+    @expose("/nlp/", methods=["POST"])
+    # @protect()
+    # @statsd_metrics
+    # @requires_json
+    def execute_completion(self) -> FlaskResponse:
+        """Executes a SQL query
+        ---
+        post:
+          description: >-
+            Starts the execution of a SQL query
+          requestBody:
+            description: SQL query and params
+            required: true
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/NLPPayloadSchema'
+          responses:
+            200:
+              description: Query execution result
+              content:
+                application/json:
+                  schema:
+                    $ref: '#/components/schemas/NLPPayloadSchema'
+            202:
+              description: Query execution result, query still running
+              content:
+                application/json:
+                  schema:
+                    $ref: '#/components/schemas/NLPPayloadSchema'
+            400:
+              $ref: '#/components/responses/400'
+            401:
+              $ref: '#/components/responses/401'
+            403:
+              $ref: '#/components/responses/403'
+            404:
+              $ref: '#/components/responses/404'
+            500:
+              $ref: '#/components/responses/500'
+        """
+        try:
+            openai.api_key = "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"
+            requestPrompt = request.json
+            completion = openai.Completion.create(
+                engine="code-davinci-002",
+                prompt=requestPrompt['prompt'],
+                max_tokens=100,
+                temperature=0
+            )
+            choice = {**completion.choices[0]}
+            payload = {
+                'result': choice['text'],
+            }
+            return self.response(200, **payload)
+        except Exception as e:
+            print(e);
 
     @expose("/results/")
     @protect()

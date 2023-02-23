@@ -46,6 +46,7 @@ export {
   Tree,
   Typography,
   Upload,
+  Result,
 } from 'antd';
 
 /*
