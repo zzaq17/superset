@@ -651,7 +651,7 @@ const SqlEditor = ({
   const [NLPLoading, setNLPLoading] = useState(false);
   const handleNLPGeneration = async () => {
     setNLPLoading(true);
-    let tablesContext = "# Given the following table/s definition\n\n";
+    let tablesContext = "";
     for(let t = 0; t < tables.length; t += 1) {
       const table = tables[t];
       if (table?.columns?.length) {
@@ -664,12 +664,7 @@ const SqlEditor = ({
         tablesContext += `\n\n`;
       }
     }
-    tablesContext += `# Create one valid SQL SELECT statement with the following constraints\n`;
-    tablesContext += `# For example: SELECT column FROM table;\n`;
-    tablesContext += `# Do NOT generate more tha one SELECT statement\n`;
-    tablesContext += `# Do NOT generate any text other than one valid SELECT statement\n`;
-    tablesContext += `# Do ONLY use SELECT\n`;
-    tablesContext += `# Respond with a SQL statement to select ${NLPQuery} from the given tables ->`;
+    tablesContext += `# Create a SQLite query to: ${NLPQuery}`;
     const postPayload = {
       prompt: tablesContext,
     }
@@ -680,8 +675,8 @@ const SqlEditor = ({
       parseMethod: 'json-bigint',
     })
       .then(({ json }) => {
-        setNLPResult(json.result);
-        setEditorType('sql')
+        setEditorType('sql');
+        setNLPResult(json.result.trim());
         setNLPLoading(false);
       })
       .catch(() => {
@@ -690,7 +685,7 @@ const SqlEditor = ({
 
     console.log(tablesContext);
   }
-  const renderNLPMenu = (
+  const renderNLPMenu = useMemo(() => (
     <Menu
       mode="horizontal"
       defaultSelectedKeys={[editorType]}
@@ -715,7 +710,7 @@ const SqlEditor = ({
         Natural language
       </Menu.Item>
     </Menu>
-  );
+  ), [NLPLoading, editorType]);
 
   const renderNLPBottomBar = (
     tables.length > 0 ? <Button
@@ -740,7 +735,7 @@ const SqlEditor = ({
         disabled={NLPLoading}
         rows={6}
         onChange={e => setNLPQuery(e.target.value)}
-        placeholder="Get all fruits from the tree..."
+        placeholder="Select all names from table"
       />
     ) : (
       <Result

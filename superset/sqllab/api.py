@@ -127,10 +127,11 @@ class SqlLabRestApi(BaseSupersetApi):
             openai.api_key = "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"
             requestPrompt = request.json
             completion = openai.Completion.create(
-                engine="code-davinci-002",
+                engine="text-davinci-003",
                 prompt=requestPrompt['prompt'],
                 max_tokens=100,
-                temperature=0
+                temperature=0.1,
+                stop="END"
             )
             choice = {**completion.choices[0]}
             payload = {
