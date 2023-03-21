@@ -610,6 +610,7 @@ const PropertiesModal = ({
         },
         (tags: TagType[]) => setTags(tags),
         (error: Response) => {
+          console.log(error);
           addDangerToast(`Error fetching tags: ${error.text}`);
         },
       );
