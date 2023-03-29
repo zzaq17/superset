@@ -151,8 +151,8 @@ class SavedQueryRestApi(BaseSupersetModelRestApi):
         "id": [SavedQueryFavoriteFilter],
         "label": [SavedQueryAllTextFilter],
     }
-    if is_feature_enabled("TAGGING_SYSTEM"):
-        search_filters["tags"] = [SavedQueryTagFilter]
+
+    search_filters["tags"] = [SavedQueryTagFilter]
 
     apispec_parameter_schemas = {
         "get_delete_ids_schema": get_delete_ids_schema,

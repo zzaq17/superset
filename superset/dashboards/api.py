@@ -215,36 +215,24 @@ class DashboardRestApi(BaseSupersetModelRestApi):
     edit_columns = add_columns
 
     search_columns = (
-        (
-            "created_by",
-            "changed_by",
-            "dashboard_title",
-            "id",
-            "owners",
-            "published",
-            "roles",
-            "slug",
-            "tags",
-        )
-        if is_feature_enabled("TAGGING_SYSTEM")
-        else (
-            "created_by",
-            "changed_by",
-            "dashboard_title",
-            "id",
-            "owners",
-            "published",
-            "roles",
-            "slug",
-        )
+        "created_by",
+        "changed_by",
+        "dashboard_title",
+        "id",
+        "owners",
+        "published",
+        "roles",
+        "slug",
+        "tags",
     )
+
     search_filters = {
         "dashboard_title": [DashboardTitleOrSlugFilter],
         "id": [DashboardFavoriteFilter, DashboardCertifiedFilter],
         "created_by": [DashboardCreatedByMeFilter, DashboardHasCreatedByFilter],
     }
-    if is_feature_enabled("TAGGING_SYSTEM"):
-        search_filters["tags"] = [DashboardTagFilter]
+    
+    search_filters["tags"] = [DashboardTagFilter]
 
     base_order = ("changed_on", "desc")
 
