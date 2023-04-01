@@ -582,7 +582,10 @@ const DashboardBuilder: FC<DashboardBuilderProps> = () => {
         {!hideDashboardHeader && <DashboardHeader />}
         {showFilterBar &&
           filterBarOrientation === FilterBarOrientation.HORIZONTAL && (
-            <FilterBar orientation={FilterBarOrientation.HORIZONTAL} />
+            <FilterBar
+              orientation={FilterBarOrientation.HORIZONTAL}
+              hidden={isReport}
+            />
           )}
         {dropIndicatorProps && <div {...dropIndicatorProps} />}
         {!isReport && topLevelTabs && !uiConfig.hideNav && (
@@ -654,18 +657,17 @@ const DashboardBuilder: FC<DashboardBuilderProps> = () => {
                 >
                   <StickyPanel ref={containerRef} width={filterBarWidth}>
                     <ErrorBoundary>
-                      {!isReport && (
-                        <FilterBar
-                          orientation={FilterBarOrientation.VERTICAL}
-                          verticalConfig={{
-                            filtersOpen: dashboardFiltersOpen,
-                            toggleFiltersBar: toggleDashboardFiltersOpen,
-                            width: filterBarWidth,
-                            height: filterBarHeight,
-                            offset: filterBarOffset,
-                          }}
-                        />
-                      )}
+                      <FilterBar
+                        orientation={FilterBarOrientation.VERTICAL}
+                        verticalConfig={{
+                          filtersOpen: dashboardFiltersOpen,
+                          toggleFiltersBar: toggleDashboardFiltersOpen,
+                          width: filterBarWidth,
+                          height: filterBarHeight,
+                          offset: filterBarOffset,
+                        }}
+                        hidden={isReport}
+                      />
                     </ErrorBoundary>
                   </StickyPanel>
                 </FiltersPanel>
