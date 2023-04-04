@@ -152,7 +152,7 @@ class Datasource(BaseSupersetView):
         to_vectors += stringified_columns
 
         to_vectors += f"EXAMPLE:\n"
-        to_vectors += f"{datasource_sel_star}"
+        to_vectors += f"{datasource_sel_star}\n"
 
         openai.api_key = app.config["OPENAI_API_KEY"]
         pinecone.init(
