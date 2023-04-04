@@ -168,7 +168,7 @@ class SqlLabRestApi(BaseSupersetApi):
             prompt += "The 'COMMAND' given above is a natural language command that you must transform into one SQL query.\n"
             prompt += "In order to generate the SQL query properly, follow the instructions below:\n"
             prompt += "1. Only SELECT statements are allowed\n"
-            prompt += f"2. Use the SQL dialect {database_backend}\n"
+            prompt += f"2. The query should run successfully on a {database_backend} database\n"
             prompt += "3. Use all table definitions above\n"
             prompt += "4. Respond solely with the SQL query\n"
             prompt += "\n{{ SQL_QUERY }}\n"
