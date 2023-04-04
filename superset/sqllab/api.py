@@ -15,6 +15,8 @@
 # specific language governing permissions and limitations
 # under the License.
 import logging
+import openai
+import pinecone
 from typing import Any, cast, Dict, Optional
 
 import simplejson as json
@@ -41,7 +43,7 @@ from superset.sqllab.execution_context_convertor import ExecutionContextConverto
 from superset.sqllab.query_render import SqlQueryRenderImpl
 from superset.sqllab.schemas import (
     ExecutePayloadSchema,
-    NLPPayloadSchema,
+    NLPtoSQLPayloadSchema,
     QueryExecutionResponseSchema,
     sql_lab_get_results_schema,
 )
@@ -56,7 +58,6 @@ from superset.superset_typing import FlaskResponse
 from superset.utils import core as utils
 from superset.views.base import json_success
 from superset.views.base_api import BaseSupersetApi, requires_json, statsd_metrics
-import openai
 
 config = app.config
 logger = logging.getLogger(__name__)
@@ -71,47 +72,42 @@ class SqlLabRestApi(BaseSupersetApi):
     class_permission_name = "Query"
 
     execute_model_schema = ExecutePayloadSchema()
+    execute_nlp_to_sql_schema = NLPtoSQLPayloadSchema()
 
     apispec_parameter_schemas = {
         "sql_lab_get_results_schema": sql_lab_get_results_schema,
     }
     openapi_spec_tag = "SQL Lab"
     openapi_spec_component_schemas = (
-        NLPPayloadSchema,
+        NLPtoSQLPayloadSchema,
         ExecutePayloadSchema,
         QueryExecutionResponseSchema,
     )
 
-    @expose("/nlp/", methods=["POST"])
+    @expose("/nlp/tosql", methods=["POST"])
     # @protect()
     # @statsd_metrics
-    # @requires_json
+    @requires_json
     def execute_completion(self) -> FlaskResponse:
-        """Executes a SQL query
+        """Translates natural language to SQL
         ---
         post:
           description: >-
-            Starts the execution of a SQL query
+            Executes the translation to SQL
           requestBody:
             description: SQL query and params
             required: true
             content:
               application/json:
                 schema:
-                  $ref: '#/components/schemas/NLPPayloadSchema'
+                  $ref: '#/components/schemas/NLPtoSQLPayloadSchema'
           responses:
             200:
-              description: Query execution result
+              description: Natural language to SQL result
               content:
                 application/json:
                   schema:
-                    $ref: '#/components/schemas/NLPPayloadSchema'
-            202:
-              description: Query execution result, query still running
-              content:
-                application/json:
-                  schema:
-                    $ref: '#/components/schemas/NLPPayloadSchema'
+                    $ref: '#/components/schemas/NLPtoSQLPayloadSchema'
             400:
               $ref: '#/components/responses/400'
             401:
@@ -124,18 +120,64 @@ class SqlLabRestApi(BaseSupersetApi):
               $ref: '#/components/responses/500'
         """
         try:
-            openai.api_key = "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"
-            requestPrompt = request.json
-            completion = openai.Completion.create(
-                engine="text-davinci-003",
-                prompt=requestPrompt['prompt'],
-                max_tokens=100,
-                temperature=0.1,
-                stop="END"
+            self.execute_nlp_to_sql_schema.load(request.json)
+        except ValidationError as error:
+            return self.response_400(message=error.messages)
+        try:
+            openai.api_key = app.config["OPENAI_API_KEY"]
+            req_body = request.json
+            to_sql = req_body.get("to_sql")
+            database_id = req_body.get("database_id")
+            database_backend = req_body.get("database_backend")
+
+            pinecone.init(
+                api_key=app.config["PINECONE_API_KEY"],
+                environment="us-east1-gcp"
             )
-            choice = {**completion.choices[0]}
+
+            # attempts to get required datasources from vectors
+            pinecone_index_name = app.config["PINECONE_INDEX_NAME"]
+            pinecone_index = pinecone.Index(pinecone_index_name)
+            prompt_to_vectors_res = openai.Embedding.create(
+                input=[to_sql], engine="text-embedding-ada-002"
+            )
+            prompt_to_vectors = prompt_to_vectors_res['data'][0]['embedding']
+            pinecone_query = pinecone_index.query(
+                prompt_to_vectors,
+                top_k=2,
+                filter={
+                    "database_id": database_id,
+                },
+                namespace="datasource",
+                include_metadata=True
+            )
+            pinecone_matches = pinecone_query.get('matches', [])
+            all_sources = ""
+            for obj in pinecone_matches:
+                all_sources += f"{obj['metadata']['original']}\n"
+
+            prompt = ""
+            prompt += f"\n{all_sources}\n"
+            prompt += f"\nCOMMAND:\n{to_sql}\n"
+            prompt += "\nINSTRUCTIONS:\n"
+            prompt += "The 'COMMAND' given above is a natural language command that you must transform into one SQL query.\n"
+            prompt += "In order to generate the SQL query properly, follow the instructions below:\n"
+            prompt += "1. Only SELECT statements are allowed\n"
+            prompt += f"2. Use the SQL dialect {database_backend}\n"
+            prompt += "3. Use all table definitions above\n"
+            prompt += "4. Respond solely with the SQL query\n"
+            prompt += "\n{{ SQL_QUERY }}\n"
+
+            chat_completion = openai.ChatCompletion.create(
+                model="gpt-3.5-turbo",
+                temperature=0,
+                messages=[
+                    {"role": "user", "content": prompt},
+                ]
+            )
+            completion = {**chat_completion.choices[0]}
             payload = {
-                'result': choice['text'],
+                'result': completion['message']['content'],
             }
             return self.response(200, **payload)
         except Exception as e:

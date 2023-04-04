@@ -228,8 +228,6 @@ const SqlEditor = ({
     },
   );
 
-  console.log('tables', tables);
-
   const [height, setHeight] = useState(0);
   const [autorun, setAutorun] = useState(queryEditor.autorun);
   const [ctas, setCtas] = useState('');
@@ -651,44 +649,32 @@ const SqlEditor = ({
   const [NLPLoading, setNLPLoading] = useState(false);
   const handleNLPGeneration = async () => {
     setNLPLoading(true);
-    let tablesContext = "";
-    for(let t = 0; t < tables.length; t += 1) {
-      const table = tables[t];
-      if (table?.columns?.length) {
-        tablesContext += `# Table ${table.name}, columns = [`;
-        for(let c = 0; c < table.columns.length; c += 1) {
-          const col = table.columns[c];
-          tablesContext += col.name;
-          tablesContext += table.columns.at(-1)?.name === col.name ? "]" : ", "
-        }
-        tablesContext += `\n\n`;
-      }
-    }
-    tablesContext += `# Create a SQLite query to: ${NLPQuery}`;
     const postPayload = {
-      prompt: tablesContext,
+      to_sql: NLPQuery,
+      database_id: database.id,
+      database_backend: database.backend,
     }
     SupersetClient.post({
-      endpoint: "api/v1/sqllab/nlp",
+      endpoint: "api/v1/sqllab/nlp/tosql",
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(postPayload),
       parseMethod: 'json-bigint',
+      body: JSON.stringify(postPayload),
     })
       .then(({ json }) => {
+        const sql = json.result.trim();
+        queryEditor.sql = sql;
         setEditorType('sql');
-        setNLPResult(json.result.trim());
+        setNLPResult(sql);
         setNLPLoading(false);
       })
       .catch(() => {
         setNLPLoading(false);
       });
-
-    console.log(tablesContext);
   }
   const renderNLPMenu = useMemo(() => (
     <Menu
       mode="horizontal"
-      defaultSelectedKeys={[editorType]}
+      selectedKeys={[editorType]}
       css={css`
         margin-bottom: 20px;
       `}
@@ -713,7 +699,7 @@ const SqlEditor = ({
   ), [NLPLoading, editorType]);
 
   const renderNLPBottomBar = (
-    tables.length > 0 ? <Button
+    <Button
       type="primary"
       size="large"
       onClick={handleNLPGeneration}
@@ -726,24 +712,17 @@ const SqlEditor = ({
     >
       {!NLPLoading ? <Icons.ExperimentOutlined /> : <Icons.LoadingOutlined />}{' '}
       Generate query
-    </Button> : null
+    </Button>
   );
 
-  const renderNLPForm =
-    tables.length > 0 ? (
-      <TextArea
+  const renderNLPForm = (
+    <TextArea
         disabled={NLPLoading}
         rows={6}
         onChange={e => setNLPQuery(e.target.value)}
         placeholder="Select all names from table"
-      />
-    ) : (
-      <Result
-        status="warning"
-        title={<small>Please select one or more tables</small>}
-        subTitle="Select one or more tables on the left pane for the AI algorithm to gain context about your query"
-      />
-    );
+     />
+  );
 
   const queryPane = () => {
     const hotkeys = getHotkeyConfig();

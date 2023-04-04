@@ -1583,3 +1583,9 @@ elif importlib.util.find_spec("superset_config") and not is_test():
     except Exception:
         logger.exception("Found but failed to import local superset_config")
         raise
+
+# NLP
+
+OPENAI_API_KEY="INSERT_OPENAI_KEY_HERE"
+PINECONE_API_KEY="INSERT_PINECONE_KEY_HERE"
+PINECONE_INDEX_NAME="preset"

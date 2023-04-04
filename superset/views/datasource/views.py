@@ -15,6 +15,8 @@
 # specific language governing permissions and limitations
 # under the License.
 import json
+import pinecone
+import openai
 from collections import Counter
 from typing import Any
 
@@ -27,7 +29,7 @@ from marshmallow import ValidationError
 from sqlalchemy.exc import NoSuchTableError
 from sqlalchemy.orm.exc import NoResultFound
 
-from superset import db, event_logger, security_manager
+from superset import app, db, event_logger, security_manager
 from superset.commands.utils import populate_owners
 from superset.connectors.sqla.models import SqlaTable
 from superset.connectors.sqla.utils import get_physical_table_metadata
@@ -125,6 +127,73 @@ class Datasource(BaseSupersetView):
             )
         orm_datasource.update_from_object(datasource_dict)
         data = orm_datasource.data
+
+        # transform the datasource info to vectors
+        datasource_table = datasource_dict.get('table_name')
+        datasource_schema = datasource_dict.get('schema')
+        datasource_columns = datasource_dict.get('columns')
+        datasource_desc = datasource_dict.get('description')
+        datasource_sel_star= datasource_dict.get('select_star')
+        database_backend = datasource_dict['database'].get('backend')
+        database_name = datasource_dict['database'].get('name')
+        stringified_columns = ""
+        for obj in datasource_columns:
+            stringified_columns += f"col_name: {obj['column_name']},"
+            stringified_columns += f"col_label: {obj['verbose_name']},"
+            stringified_columns += f"col_type: {obj['type']},"
+            stringified_columns += f"col_desc: {obj['description']}\n"
+        to_vectors = ""
+        to_vectors += f"# TABLE:\n"
+        to_vectors += f"table_name: {datasource_table}\n"
+        to_vectors += f"table_schema: {datasource_schema}\n"
+        to_vectors += f"table_desc: {datasource_desc}\n"
+
+        to_vectors += f"COLUMNS:\n"
+        to_vectors += stringified_columns
+
+        to_vectors += f"EXAMPLE:\n"
+        to_vectors += f"{datasource_sel_star}"
+
+        openai.api_key = app.config["OPENAI_API_KEY"]
+        pinecone.init(
+            api_key=app.config["PINECONE_API_KEY"],
+            environment="us-east1-gcp"
+        )
+        pinecone_index_name = app.config["PINECONE_INDEX_NAME"]
+        if pinecone_index_name not in pinecone.list_indexes():
+            # if does not exist, create index
+            pinecone.create_index(
+                name=pinecone_index_name,
+                # dimension of OpenAI embeddings
+                dimension=1536,
+                # use cosine similarity
+                metric='cosine'
+            )
+        # connect to Pinecone index
+        pinecone_index = pinecone.Index(pinecone_index_name)
+        # create embeddings with OpenAI
+        to_vectors_res = openai.Embedding.create(
+            input=[to_vectors], engine="text-embedding-ada-002"
+        )
+        embeddings = to_vectors_res['data'][0]['embedding']
+        vector_id = f"datasource-{datasource_id}"
+        # upsert vectors for this datasource
+        pinecone_index.upsert(
+            vectors=[(
+                vector_id,
+                embeddings,
+                {
+                    "original": to_vectors,
+                    "datasource_id": datasource_id,
+                    "datasource_schema": datasource_schema,
+                    "database_id": database_id,
+                    "database_name": database_name,
+                    "database_backend": database_backend
+                }
+            )],
+            namespace="datasource"
+        )
+
         db.session.commit()
 
         return self.json_response(sanitize_datasource_data(data))

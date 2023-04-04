@@ -23,8 +23,10 @@ sql_lab_get_results_schema = {
     },
     "required": ["key"],
 }
-class NLPPayloadSchema(Schema):
-    prompt = fields.String(required=True)
+class NLPtoSQLPayloadSchema(Schema):
+    to_sql = fields.String(required=True)
+    database_id = fields.Integer(required=True)
+    database_backend = fields.String(required=True)
 
 class ExecutePayloadSchema(Schema):
     database_id = fields.Integer(required=True)
