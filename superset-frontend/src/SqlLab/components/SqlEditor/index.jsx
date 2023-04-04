@@ -37,7 +37,7 @@ import Mousetrap from 'mousetrap';
 import Button from 'src/components/Button';
 import Timer from 'src/components/Timer';
 import ResizableSidebar from 'src/components/ResizableSidebar';
-import { AntdDropdown, AntdSwitch, Result } from 'src/components';
+import { AntdDropdown, AntdSwitch } from 'src/components';
 import { Input, TextArea } from 'src/components/Input';
 import { Menu } from 'src/components/Menu';
 import Icons from 'src/components/Icons';
@@ -229,7 +229,6 @@ const SqlEditor = ({
         database: databases[dbId],
         latestQuery: queries[latestQueryId],
         hideLeftBar,
-        tables,
       };
     },
   );
