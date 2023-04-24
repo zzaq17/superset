@@ -144,9 +144,10 @@ class ChartRestApi(BaseSupersetModelRestApi):
         "viz_type",
         "query_context",
         "is_managed_externally",
+        "tags.id",
+        "tags.name",
+        "tags.type",
     ]
-    if is_feature_enabled("TAGGING_SYSTEM"):
-        show_columns += ["tags.id", "tags.name", "tags.type"]
 
     show_select_columns = show_columns + ["table.id"]
     list_columns = [
