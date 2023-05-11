@@ -144,8 +144,6 @@ rsa==4.9
     # via google-auth
 setuptools-git==1.2
     # via prophet
-shillelagh[gsheetsapi]==1.2.6
-    # via apache-superset
 sqlalchemy-bigquery==1.6.1
     # via apache-superset
 statsd==4.0.1
