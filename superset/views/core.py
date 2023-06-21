@@ -46,7 +46,7 @@ from superset.charts.commands.exceptions import ChartNotFoundError
 from superset.charts.dao import ChartDAO
 from superset.common.chart_data import ChartDataResultFormat, ChartDataResultType
 from superset.connectors.base.models import BaseDatasource
-from superset.connectors.sqla.models import SqlaTable
+from superset.connectors.sqla.models import SqlaTable, SqlMetric, TableColumn
 from superset.dashboards.commands.exceptions import DashboardAccessDeniedError
 from superset.dashboards.commands.importers.v0 import ImportDashboardsCommand
 from superset.dashboards.permalink.commands.get import GetDashboardPermalinkCommand
@@ -54,18 +54,28 @@ from superset.dashboards.permalink.exceptions import DashboardPermalinkGetFailed
 from superset.databases.dao import DatabaseDAO
 from superset.datasets.commands.exceptions import DatasetNotFoundError
 from superset.datasource.dao import DatasourceDAO
-from superset.exceptions import CacheLoadError, DatabaseNotFound, SupersetException
+from superset.errors import ErrorLevel, SupersetError, SupersetErrorType
+from superset.exceptions import (
+    CacheLoadError,
+    DatabaseNotFound,
+    SupersetErrorException,
+    SupersetException,
+    SupersetGenericErrorException,
+    SupersetTimeoutException,
+)
 from superset.explore.form_data.commands.create import CreateFormDataCommand
 from superset.explore.form_data.commands.get import GetFormDataCommand
 from superset.explore.form_data.commands.parameters import CommandParameters
 from superset.explore.permalink.commands.get import GetExplorePermalinkCommand
 from superset.explore.permalink.exceptions import ExplorePermalinkGetFailedError
 from superset.extensions import async_query_manager, cache_manager
+from superset.jinja_context import get_template_processor
 from superset.models.core import Database
 from superset.models.dashboard import Dashboard
 from superset.models.slice import Slice
 from superset.models.sql_lab import Query, TabState
 from superset.models.user_attributes import UserAttribute
+from superset.sql_parse import ParsedQuery
 from superset.superset_typing import FlaskResponse
 from superset.tasks.async_queries import load_explore_json_into_cache
 from superset.utils import core as utils
@@ -88,7 +98,9 @@ from superset.views.base import (
     get_error_msg,
     handle_api_exception,
     json_error_response,
+    json_errors_response,
     json_success,
+    validate_sqlatable,
 )
 from superset.views.utils import (
     bootstrap_user_data,
@@ -947,6 +959,177 @@ class Superset(BaseSupersetView):  # pylint: disable=too-many-public-methods
     @expose("/log/", methods=("POST",))
     def log(self) -> FlaskResponse:  # pylint: disable=no-self-use
         return Response(status=200)
+
+    @has_access
+    @expose("/get_or_create_table/", methods=["POST"])
+    @event_logger.log_this
+    @deprecated(new_target="api/v1/dataset/get_or_create/")
+    def sqllab_table_viz(self) -> FlaskResponse:  # pylint: disable=no-self-use
+        """Gets or creates a table object with attributes passed to the API.
+
+        It expects the json with params:
+        * datasourceName - e.g. table name, required
+        * dbId - database id, required
+        * schema - table schema, optional
+        * templateParams - params for the Jinja templating syntax, optional
+        :return: Response
+        """
+        data = json.loads(request.form["data"])
+        table_name = data["datasourceName"]
+        database_id = data["dbId"]
+        table = (
+            db.session.query(SqlaTable)
+            .filter_by(database_id=database_id, table_name=table_name)
+            .one_or_none()
+        )
+        if not table:
+            # Create table if doesn't exist.
+            with db.session.no_autoflush:
+                table = SqlaTable(table_name=table_name, owners=[g.user])
+                table.database_id = database_id
+                table.database = (
+                    db.session.query(Database).filter_by(id=database_id).one()
+                )
+                table.schema = data.get("schema")
+                table.template_params = data.get("templateParams")
+                # needed for the table validation.
+                # fn can be deleted when this endpoint is removed
+                validate_sqlatable(table)
+
+            db.session.add(table)
+            table.fetch_metadata()
+            db.session.commit()
+
+        return json_success(json.dumps({"table_id": table.id}))
+
+    @has_access
+    @expose("/sqllab_viz/", methods=["POST"])
+    @event_logger.log_this
+    def sqllab_viz(self) -> FlaskResponse:  # pylint: disable=no-self-use
+        data = json.loads(request.form["data"])
+        try:
+            table_name = data["datasourceName"]
+            database_id = data["dbId"]
+        except KeyError as ex:
+            raise SupersetGenericErrorException(
+                __(
+                    "One or more required fields are missing in the request. Please try "
+                    "again, and if the problem persists contact your administrator."
+                ),
+                status=400,
+            ) from ex
+        database = db.session.query(Database).get(database_id)
+        if not database:
+            raise SupersetErrorException(
+                SupersetError(
+                    message=__("The database was not found."),
+                    error_type=SupersetErrorType.DATABASE_NOT_FOUND_ERROR,
+                    level=ErrorLevel.ERROR,
+                ),
+                status=404,
+            )
+        table = (
+            db.session.query(SqlaTable)
+            .filter_by(database_id=database_id, table_name=table_name)
+            .one_or_none()
+        )
+
+        if table:
+            return json_errors_response(
+                [
+                    SupersetError(
+                        message=f"Dataset [{table_name}] already exists",
+                        error_type=SupersetErrorType.GENERIC_BACKEND_ERROR,
+                        level=ErrorLevel.WARNING,
+                    )
+                ],
+                status=422,
+            )
+
+        table = SqlaTable(table_name=table_name, owners=[g.user])
+        table.database = database
+        table.schema = data.get("schema")
+        table.template_params = data.get("templateParams")
+        table.is_sqllab_view = True
+        table.sql = ParsedQuery(data.get("sql")).stripped()
+        db.session.add(table)
+        cols = []
+        for config_ in data.get("columns"):
+            column_name = config_.get("column_name") or config_.get("name")
+            col = TableColumn(
+                column_name=column_name,
+                filterable=True,
+                groupby=True,
+                is_dttm=config_.get("is_dttm", False),
+                type=config_.get("type", False),
+            )
+            cols.append(col)
+
+        table.columns = cols
+        table.metrics = [SqlMetric(metric_name="count", expression="count(*)")]
+        db.session.commit()
+
+        return json_success(
+            json.dumps(
+                {"table_id": table.id, "data": sanitize_datasource_data(table.data)}
+            )
+        )
+
+    @has_access
+    @expose("/extra_table_metadata/<int:database_id>/<table_name>/<schema>/")
+    @event_logger.log_this
+    @deprecated(
+        new_target="api/v1/database/<int:pk>/table_extra/<table_name>/<schema_name>/"
+    )
+    def extra_table_metadata(  # pylint: disable=no-self-use
+        self, database_id: int, table_name: str, schema: str
+    ) -> FlaskResponse:
+        parsed_schema = utils.parse_js_uri_path_item(schema, eval_undefined=True)
+        table_name = utils.parse_js_uri_path_item(table_name)  # type: ignore
+        mydb = db.session.query(Database).filter_by(id=database_id).one()
+        payload = mydb.db_engine_spec.extra_table_metadata(
+            mydb, table_name, parsed_schema
+        )
+        return json_success(json.dumps(payload))
+
+    @has_access_api
+    @expose("/estimate_query_cost/<int:database_id>/", methods=["POST"])
+    @expose("/estimate_query_cost/<int:database_id>/<schema>/", methods=["POST"])
+    @event_logger.log_this
+    @deprecated()
+    def estimate_query_cost(  # pylint: disable=no-self-use
+        self, database_id: int, schema: str | None = None
+    ) -> FlaskResponse:
+        mydb = db.session.query(Database).get(database_id)
+
+        sql = json.loads(request.form.get("sql", '""'))
+        if template_params := json.loads(request.form.get("templateParams") or "{}"):
+            template_processor = get_template_processor(mydb)
+            sql = template_processor.process_template(sql, **template_params)
+
+        timeout = SQLLAB_QUERY_COST_ESTIMATE_TIMEOUT
+        timeout_msg = f"The estimation exceeded the {timeout} seconds timeout."
+        try:
+            with utils.timeout(seconds=timeout, error_message=timeout_msg):
+                cost = mydb.db_engine_spec.estimate_query_cost(
+                    mydb, schema, sql, utils.QuerySource.SQL_LAB
+                )
+        except SupersetTimeoutException as ex:
+            logger.exception(ex)
+            return json_errors_response([ex.error])
+        except Exception as ex:  # pylint: disable=broad-except
+            return json_error_response(utils.error_msg_from_exception(ex))
+
+        spec = mydb.db_engine_spec
+        query_cost_formatters: dict[str, Any] = app.config[
+            "QUERY_COST_FORMATTERS_BY_ENGINE"
+        ]
+        query_cost_formatter = query_cost_formatters.get(
+            spec.engine, spec.query_cost_formatter
+        )
+        cost = query_cost_formatter(cost)
+
+        return json_success(json.dumps(cost))
 
     @expose("/theme/")
     def theme(self) -> FlaskResponse:
