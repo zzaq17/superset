@@ -15,10 +15,10 @@
 # specific language governing permissions and limitations
 # under the License.
 import logging
+from datetime import datetime
 
 from celery import Celery
 from celery.exceptions import SoftTimeLimitExceeded
-from dateutil import parser
 
 from superset import app, is_feature_enabled
 from superset.commands.exceptions import CommandException
@@ -74,11 +74,10 @@ def scheduler() -> None:
 
 
 @celery_app.task(name="reports.execute", bind=True)
-def execute(self: Celery.task, report_schedule_id: int, scheduled_dttm: str) -> None:
+def execute(self: Celery.task, report_schedule_id: int, scheduled_dttm: datetime) -> None:
     task_id = None
     try:
         task_id = execute.request.id
-        scheduled_dttm_ = parser.parse(scheduled_dttm)
         logger.info(
             "Executing alert/report, task id: %s, scheduled_dttm: %s",
             task_id,
@@ -87,7 +86,7 @@ def execute(self: Celery.task, report_schedule_id: int, scheduled_dttm: str) -> 
         AsyncExecuteReportScheduleCommand(
             task_id,
             report_schedule_id,
-            scheduled_dttm_,
+            scheduled_dttm,
         ).run()
     except ReportScheduleUnexpectedError:
         logger.exception(
