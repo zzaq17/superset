@@ -1408,7 +1408,7 @@ TALISMAN_CONFIG = {
 TALISMAN_DEV_CONFIG = {
     "content_security_policy": {
         "default-src": ["'self'"],
-        "img-src": ["'self'", "data:"],
+        "img-src": ["'self'", "data:", "upload.wikimedia.org"],
         "worker-src": ["'self'", "blob:"],
         "connect-src": [
             "'self'",

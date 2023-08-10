@@ -18,8 +18,10 @@
  */
 import React, { useRef } from 'react';
 import { NativeFilterType, styled, t, useTheme } from '@superset-ui/core';
-import { AntdDropdown } from 'src/components';
-import { MainNav as Menu } from 'src/components/Menu';
+import { DropdownButton } from 'src/components/DropdownButton';
+import { DropdownButtonProps } from 'antd/lib/dropdown';
+import Icons from 'src/components/Icons';
+import { MainNav } from 'src/components/Menu';
 import FilterTitleContainer from './FilterTitleContainer';
 import { FilterRemoval } from './types';
 
@@ -52,11 +54,6 @@ const TabsContainer = styled.div`
   flex-direction: column;
 `;
 
-const options = [
-  { label: t('Filter'), type: NativeFilterType.NATIVE_FILTER },
-  { label: t('Divider'), type: NativeFilterType.DIVIDER },
-];
-
 const FilterTitlePane: React.FC<Props> = ({
   getFilterTitle,
   onChange,
@@ -88,27 +85,30 @@ const FilterTitlePane: React.FC<Props> = ({
     }, 0);
   };
   const menu = (
-    <Menu mode="horizontal">
-      {options.map(item => (
-        <Menu.Item onClick={() => handleOnAdd(item.type)}>
-          {item.label}
-        </Menu.Item>
-      ))}
-    </Menu>
+    <MainNav mode="horizontal">
+        <MainNav.Item onClick={() => handleOnAdd(NativeFilterType.DIVIDER)}>
+            {t('Add Divider')}
+        </MainNav.Item>
+    </MainNav>
   );
+
+  const StyledDropdownButton = styled(
+    DropdownButton as React.FC<DropdownButtonProps>,
+  )`
+    padding: ${theme.gridUnit * 2}px ${theme.gridUnit * 4}px;
+  `;
+
   return (
     <TabsContainer>
-      <AntdDropdown
+      <StyledDropdownButton
         overlay={menu}
-        arrow
         placement="topLeft"
-        trigger={['hover']}
+        icon={<Icons.CaretDown />}
       >
-        <StyledAddBox>
-          <div data-test="new-dropdown-icon" className="fa fa-plus" />{' '}
-          <span>{t('Add filters and dividers')}</span>
-        </StyledAddBox>
-      </AntdDropdown>
+        <span onClick={() => handleOnAdd(NativeFilterType.NATIVE_FILTER)}>
+          {t('Add Filter')}
+        </span>
+      </StyledDropdownButton>
       <div
         css={{
           height: '100%',
