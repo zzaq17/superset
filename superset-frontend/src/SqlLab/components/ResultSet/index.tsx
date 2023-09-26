@@ -29,6 +29,9 @@ import {
   t,
   useTheme,
   usePrevious,
+  css,
+  getNumberFormatter,
+  getExtensionsRegistry,
 } from '@superset-ui/core';
 import ErrorMessageWithStackTrace from 'src/components/ErrorMessage/ErrorMessageWithStackTrace';
 import {
@@ -129,6 +132,8 @@ const LimitMessage = styled.span`
   margin-left: ${({ theme }) => theme.gridUnit * 2}px;
 `;
 
+const extensionsRegistry = getExtensionsRegistry();
+
 const ResultSet = ({
   cache = false,
   csv = true,
@@ -142,6 +147,9 @@ const ResultSet = ({
   user,
   defaultQueryLimit,
 }: ResultSetProps) => {
+  const ResultTable =
+    extensionsRegistry.get('sqleditor.extension.resultTable') ??
+    FilterableTable;
   const theme = useTheme();
   const [searchText, setSearchText] = useState('');
   const [cachedData, setCachedData] = useState<Record<string, unknown>[]>([]);
@@ -503,8 +511,9 @@ const ResultSet = ({
           {renderControls()}
           {renderRowsReturned()}
           {sql}
-          <FilterableTable
+          <ResultTable
             data={data}
+            queryId={query.id}
             orderedColumnKeys={results.columns.map(col => col.column_name)}
             height={rowsHeight}
             filterText={searchText}
