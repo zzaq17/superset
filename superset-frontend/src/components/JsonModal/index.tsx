@@ -36,9 +36,9 @@
  * under the License.
  */
 import JSONbig from 'json-bigint';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback } from 'react';
 import { JSONTree } from 'react-json-tree';
-import { t, useTheme } from '@superset-ui/core';
+import { useTheme } from '@superset-ui/core';
 import Button from '../Button';
 import CopyToClipboard from '../CopyToClipboard';
 import ModalTrigger from '../ModalTrigger';
