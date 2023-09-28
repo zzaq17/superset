@@ -29,8 +29,6 @@ import {
   t,
   useTheme,
   usePrevious,
-  css,
-  getNumberFormatter,
   getExtensionsRegistry,
 } from '@superset-ui/core';
 import ErrorMessageWithStackTrace from 'src/components/ErrorMessage/ErrorMessageWithStackTrace';
