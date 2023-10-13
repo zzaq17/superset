@@ -103,6 +103,7 @@ import {
 } from './utils';
 import { FILTER_SUPPORTED_TYPES, INPUT_WIDTH } from './constants';
 import DependencyList from './DependencyList';
+import { newLabel } from './DatasetLabel';
 
 const TabPane = styled(Tabs.TabPane)`
   padding: ${({ theme }) => theme.gridUnit * 4}px 0px;
@@ -883,7 +884,7 @@ const FiltersConfigForm = (
                 initialValue={
                   datasetDetails
                     ? {
-                        label: datasetDetails.table_name,
+                        label: newLabel(datasetDetails),
                         value: datasetDetails.id,
                       }
                     : undefined
