@@ -38,7 +38,7 @@ pip-compile-multi==2.6.3
     # via -r requirements/integration.in
 pip-tools==7.3.0
     # via pip-compile-multi
-platformdirs==3.8.1
+platformdirs==3.11.0
     # via
     #   tox
     #   virtualenv
