@@ -59,7 +59,7 @@ ENV LANG=C.UTF-8 \
     FLASK_APP="superset.app:create_app()" \
     PYTHONPATH="/app/pythonpath" \
     SUPERSET_HOME="/app/superset_home" \
-    SUPERSET_PORT=8088
+    SUPERSET_PORT=8188
 
 RUN --mount=target=/var/lib/apt/lists,type=cache \
     --mount=target=/var/cache/apt,type=cache \
